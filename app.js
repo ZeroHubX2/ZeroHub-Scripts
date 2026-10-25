@@ -7,22 +7,24 @@ const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const $ = (id) => document.getElementById(id);
-const el = {
-  home: $("homeView"), detail: $("detailView"), brand: $("brandHome"), cards: $("cards"),
-  results: $("resultsText"), lastUpdate: $("lastUpdateText"), search: $("searchInput"), clear: $("clearSearch"),
-  refresh: $("refreshButton"), back: $("backButton"), scriptStat: $("scriptStat"), mapStat: $("mapStat"),
-  updatedStat: $("updatedStat"), dImage: $("detailImage"), dTitle: $("detailTitle"), dDesc: $("detailDesc"),
-  dTags: $("detailTags"), code: $("codeBlock"), codeInfo: $("codeInfo"), copy: $("copyButton"),
-  mapsPanel: $("mapsPanel"), mapList: $("mapList"), mapsCount: $("mapsCount"), toast: $("toast"),
+const ui = {
+  search: $("searchInput"), clear: $("clearSearch"), mapFilter: $("mapFilter"), refresh: $("refreshButton"),
+  scriptStat: $("scriptStat"), mapStat: $("mapStat"), updatedStat: $("updatedStat"), results: $("resultsText"),
+  featured: $("featured"), rows: $("rows"), lastUpdate: $("lastUpdateText"), quickCopy: $("quickCopy"),
+  brand: $("brandHome"), backdrop: $("backdrop"), drawer: $("drawer"), dImage: $("drawerImage"),
+  dTitle: $("drawerTitle"), dDesc: $("drawerDesc"), dMaps: $("drawerMaps"), code: $("codeBlock"),
+  codeInfo: $("codeInfo"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
 };
 
 let items = [];
-let current = null;
+let activeMap = "";
+let openItem = null;
 let loading = false;
 let lastLoad = 0;
+let lastFocus = null;
 let toastTimer;
 
-function escapeHTML(value) {
+function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]);
 }
 
@@ -37,7 +39,7 @@ function safeImage(value) {
   }
 }
 
-function safeMapURL(value) {
+function safeGameURL(value) {
   try {
     const u = new URL(String(value || ""));
     const h = u.hostname.toLowerCase();
@@ -47,145 +49,18 @@ function safeMapURL(value) {
   }
 }
 
-const mapsOf = (item) => (Array.isArray(item.maps) ? item.maps.filter((m) => m && m.name) : []);
+const gamesOf = (it) => (Array.isArray(it.maps) ? it.maps.filter((m) => m && typeof m.name === "string" && m.name.trim()) : []);
 const fmt = (n) => Number(n || 0).toLocaleString("th-TH");
+const keyOf = (name) => name.trim().toLowerCase();
+const byId = (id) => items.find((x) => Number(x.id) === Number(id));
 
-function showToast(message, ok = false) {
-  el.toast.className = `toast show${ok ? " ok" : ""}`;
-  const icon = document.createElement("i");
-  icon.className = ok ? "fa-solid fa-circle-check" : "fa-solid fa-circle-info";
-  el.toast.replaceChildren(icon, document.createTextNode(message));
+function toast(message, ok = false) {
+  ui.toast.className = `toast show${ok ? " ok" : ""}`;
+  const i = document.createElement("i");
+  i.className = ok ? "fa-solid fa-circle-check" : "fa-solid fa-circle-exclamation";
+  ui.toast.replaceChildren(i, document.createTextNode(message));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.toast.classList.remove("show"), 2400);
-}
-
-function filtered() {
-  const q = el.search.value.trim().toLocaleLowerCase("th-TH");
-  if (!q) return items;
-  return items.filter((it) =>
-    [it.name, it.description, mapsOf(it).map((m) => m.name).join(" ")].join(" ").toLocaleLowerCase("th-TH").includes(q)
-  );
-}
-
-function stateBox(icon, title, text, retry = false) {
-  return `<div class="state-box">${icon}<span class="state-title">${title}</span><span>${text}</span>${
-    retry ? '<button class="btn btn-red" type="button" data-retry><i class="fa-solid fa-rotate-right"></i>ลองโหลดอีกครั้ง</button>' : ""
-  }</div>`;
-}
-
-function skeletons() {
-  el.cards.innerHTML = Array.from({ length: 3 }, () =>
-    '<div class="card skeleton"><div class="card-media"></div><div class="card-body"><div class="sk-line" style="width:70%"></div><div class="sk-line" style="width:95%"></div><div class="sk-line" style="width:55%"></div></div></div>'
-  ).join("");
-  el.results.textContent = "กำลังโหลดรายการ...";
-}
-
-function renderCards() {
-  const shown = filtered();
-  el.clear.hidden = !el.search.value;
-  el.results.innerHTML = `แสดง <strong>${fmt(shown.length)}</strong> จาก <strong>${fmt(items.length)}</strong> สคริปต์`;
-  if (!items.length) {
-    el.cards.innerHTML = stateBox('<i class="fa-solid fa-box-open"></i>', "ยังไม่มีสคริปต์ในระบบ", "ลองกลับมาใหม่อีกครั้งภายหลัง");
-    return;
-  }
-  if (!shown.length) {
-    el.cards.innerHTML = stateBox('<i class="fa-solid fa-magnifying-glass"></i>', "ไม่พบรายการที่ค้นหา", "ลองใช้คำค้นหาอื่น หรือล้างคำค้นหาเพื่อดูทั้งหมด");
-    return;
-  }
-  el.cards.innerHTML = shown
-    .map((it) => {
-      const n = items.indexOf(it) + 1;
-      const name = escapeHTML(it.name || "สคริปต์ไม่มีชื่อ");
-      return `<button class="card" type="button" data-id="${Number(it.id)}" aria-label="เปิดรายละเอียด ${name}">
-        <span class="card-media"><img src="${escapeHTML(safeImage(it.image))}" alt="" loading="lazy"><span class="card-number"><i class="fa-solid fa-hashtag"></i>สคริปต์ ${fmt(n)}</span><span class="card-open">ดูรายละเอียด <i class="fa-solid fa-arrow-up-right-from-square"></i></span></span>
-        <span class="card-body"><span class="card-title">${name}</span><span class="card-desc">${escapeHTML(it.description || "ยังไม่มีคำอธิบายสำหรับสคริปต์นี้")}</span>
-        <span class="card-foot"><span><i class="fa-solid fa-gamepad"></i> ${fmt(mapsOf(it).length)} แมพที่รองรับ</span><span class="card-action">เปิดดู <i class="fa-solid fa-arrow-right"></i></span></span></span>
-      </button>`;
-    })
-    .join("");
-  el.cards.querySelectorAll(".card-media img").forEach((img) => img.addEventListener("error", () => (img.src = FALLBACK_IMAGE), { once: true }));
-}
-
-function renderStats(updatedAt) {
-  el.scriptStat.textContent = fmt(items.length);
-  el.mapStat.textContent = fmt(new Set(items.flatMap((it) => mapsOf(it).map((m) => m.name.trim().toLowerCase()))).size);
-  if (!updatedAt) return;
-  const d = new Date(updatedAt);
-  const today = d.toDateString() === new Date().toDateString();
-  el.updatedStat.textContent = today
-    ? d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
-  el.lastUpdate.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> อัปเดตล่าสุด ${escapeHTML(
-    d.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
-  )}`;
-}
-
-function openDetail(id, push) {
-  const it = items.find((x) => Number(x.id) === Number(id));
-  if (!it) return false;
-  current = it;
-  if (push) history.pushState({ script: it.id }, "", `?script=${it.id}`);
-  el.home.hidden = true;
-  el.detail.hidden = false;
-  document.title = `${it.name || "สคริปต์"} - ZeroHub Scripts`;
-  window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
-
-  el.dTitle.textContent = it.name || "สคริปต์ไม่มีชื่อ";
-  el.dDesc.textContent = it.description || "ยังไม่มีคำอธิบายสำหรับสคริปต์นี้";
-  el.dImage.src = safeImage(it.image);
-  el.dImage.alt = `ภาพประกอบ ${it.name || "สคริปต์"}`;
-  el.dImage.onerror = () => (el.dImage.src = FALLBACK_IMAGE);
-
-  const code = String(it.script || "");
-  el.code.textContent = code || "ไม่พบโค้ดของสคริปต์นี้";
-  el.codeInfo.textContent = `${fmt(code.length)} ตัวอักษร · ${fmt(code ? code.split("\n").length : 0)} บรรทัด`;
-
-  const maps = mapsOf(it);
-  el.dTags.innerHTML = `<span class="tag"><i class="fa-solid fa-code"></i>สคริปต์ Roblox</span><span class="tag"><i class="fa-solid fa-gift"></i>ฟรี</span><span class="tag"><i class="fa-solid fa-gamepad"></i>${fmt(maps.length)} แมพที่รองรับ</span>`;
-  el.mapsPanel.hidden = !maps.length;
-  el.mapsCount.textContent = `${fmt(maps.length)} แมพ`;
-  el.mapList.innerHTML = maps
-    .map((m) => {
-      const url = safeMapURL(m.url);
-      const inner = `<i class="fa-solid fa-gamepad"></i><span>${escapeHTML(m.name)}</span>${url ? '<i class="fa-solid fa-arrow-up-right-from-square"></i>' : ""}`;
-      return url
-        ? `<a class="map-link" href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
-        : `<div class="map-link">${inner}</div>`;
-    })
-    .join("");
-  resetCopyButton();
-  el.back.focus({ preventScroll: true });
-  return true;
-}
-
-function showHome() {
-  current = null;
-  el.detail.hidden = true;
-  el.home.hidden = false;
-  document.title = "ZeroHub Scripts - แจกสคริปต์ Roblox ฟรี";
-}
-
-function closeDetail() {
-  if (history.state && history.state.script != null) {
-    history.back();
-    return;
-  }
-  history.replaceState({}, "", location.pathname);
-  showHome();
-  document.getElementById("scripts").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
-}
-
-function syncFromURL() {
-  const id = new URLSearchParams(location.search).get("script");
-  if (id && openDetail(id, false)) return;
-  if (id) history.replaceState({}, "", location.pathname);
-  showHome();
-}
-
-function resetCopyButton() {
-  el.copy.classList.remove("success");
-  el.copy.querySelector("i").className = "fa-regular fa-copy";
-  el.copy.querySelector("span").textContent = "คัดลอกโค้ดสคริปต์";
+  toastTimer = setTimeout(() => ui.toast.classList.remove("show"), 2300);
 }
 
 async function copyText(text) {
@@ -206,12 +81,193 @@ async function copyText(text) {
   }
 }
 
-async function loadData(showSkeleton) {
+async function copyScript(it, btn) {
+  const code = it && String(it.script || "");
+  if (!code) return toast("สคริปต์นี้ยังไม่มีโค้ด");
+  if (!(await copyText(code))) return toast("คัดลอกไม่ได้ ลองลากคลุมโค้ดแล้วคัดลอกเอง");
+  toast(`คัดลอก ${it.name || "สคริปต์"} แล้ว วางใน executor ได้เลย`, true);
+  if (!btn) return;
+  const icon = btn.querySelector("i");
+  const label = btn.querySelector("span");
+  const prev = [icon.className, label.textContent];
+  btn.classList.add("done");
+  icon.className = "fa-solid fa-check";
+  label.textContent = "คัดลอกแล้ว";
+  setTimeout(() => {
+    btn.classList.remove("done");
+    [icon.className, label.textContent] = prev;
+  }, 1800);
+}
+
+function matches(it) {
+  if (activeMap && !gamesOf(it).some((m) => keyOf(m.name) === activeMap)) return false;
+  const q = ui.search.value.trim().toLocaleLowerCase("th-TH");
+  if (!q) return true;
+  return [it.name, it.description, gamesOf(it).map((m) => m.name).join(" ")].join(" ").toLocaleLowerCase("th-TH").includes(q);
+}
+
+function chipsHTML(it, limit = 4) {
+  const games = gamesOf(it);
+  const shown = games.slice(0, limit).map((m) => `<span class="chip"><i class="fa-solid fa-play"></i>${esc(m.name)}</span>`);
+  if (games.length > limit) shown.push(`<span class="chip">+${games.length - limit}</span>`);
+  return shown.length ? `<div class="chips">${shown.join("")}</div>` : "";
+}
+
+function renderFilter() {
+  const counts = new Map();
+  items.forEach((it) =>
+    gamesOf(it).forEach((m) => {
+      const k = keyOf(m.name);
+      const prev = counts.get(k);
+      counts.set(k, { name: prev ? prev.name : m.name.trim(), n: (prev ? prev.n : 0) + 1 });
+    })
+  );
+  if (activeMap && !counts.has(activeMap)) activeMap = "";
+  const btn = (key, label, n) =>
+    `<button type="button" class="mf${activeMap === key ? " on" : ""}" role="tab" aria-selected="${activeMap === key}" data-map="${esc(key)}"><span>${esc(label)}</span><span class="n">${fmt(n)}</span></button>`;
+  ui.mapFilter.innerHTML = btn("", "ทุกเกม", items.length) + [...counts].map(([k, v]) => btn(k, v.name, v.n)).join("");
+  ui.mapStat.textContent = fmt(counts.size);
+}
+
+function renderList() {
+  ui.clear.hidden = !ui.search.value;
+  const list = items.filter(matches);
+  const filtering = !!(activeMap || ui.search.value.trim());
+  ui.results.innerHTML = filtering ? `เจอ <b>${fmt(list.length)}</b> จาก ${fmt(items.length)}` : `ทั้งหมด <b>${fmt(items.length)}</b> สคริปต์`;
+
+  if (!items.length) {
+    ui.featured.innerHTML = "";
+    ui.rows.innerHTML = '<div class="state"><i class="fa-solid fa-box-open"></i><b>คลังยังว่างอยู่</b><span>เดี๋ยวทีมงานเติมสคริปต์ให้ แวะมาใหม่นะ</span></div>';
+    return;
+  }
+  if (!list.length) {
+    ui.featured.innerHTML = "";
+    ui.rows.innerHTML = '<div class="state"><i class="fa-solid fa-ghost"></i><b>หาไม่เจอเลย</b><span>ลองเปลี่ยนคำค้น หรือกด "ทุกเกม" เพื่อดูทั้งหมด</span></div>';
+    return;
+  }
+
+  const [top, ...rest] = filtering ? [null, ...list] : list;
+  ui.featured.innerHTML = top
+    ? `<article class="feature" data-open="${Number(top.id)}">
+        <div class="feature-img"><span class="ribbon">แนะนำ</span><img src="${esc(safeImage(top.image))}" alt=""></div>
+        <div class="feature-info">
+          <h3>${esc(top.name || "ไม่มีชื่อ")}</h3>
+          <p>${esc(top.description || "")}</p>
+          ${chipsHTML(top, 6)}
+          <div class="feature-actions">
+            <button class="z-btn z-red z-lg" type="button" data-copy="${Number(top.id)}"><i class="fa-solid fa-bolt"></i><span>คัดลอกเลย</span></button>
+            <button class="z-btn z-lg" type="button" data-open="${Number(top.id)}"><i class="fa-solid fa-terminal"></i><span>ดูโค้ด</span></button>
+          </div>
+        </div>
+      </article>`
+    : "";
+  ui.rows.innerHTML = rest
+    .map(
+      (it) => `<article class="row" data-open="${Number(it.id)}">
+        <img class="row-icon" src="${esc(safeImage(it.image))}" alt="" loading="lazy">
+        <div class="row-info"><h3>${esc(it.name || "ไม่มีชื่อ")}</h3><p>${esc(it.description || "")}</p>${chipsHTML(it)}</div>
+        <div class="row-actions">
+          <button class="z-btn z-red" type="button" data-copy="${Number(it.id)}"><i class="fa-regular fa-copy"></i><span>คัดลอก</span></button>
+          <button class="z-btn" type="button" data-open="${Number(it.id)}" aria-label="ดูโค้ด ${esc(it.name || "")}"><i class="fa-solid fa-terminal"></i><span>โค้ด</span></button>
+        </div>
+      </article>`
+    )
+    .join("");
+  document.querySelectorAll(".row-icon, .feature-img img").forEach((img) => img.addEventListener("error", () => (img.src = FALLBACK_IMAGE), { once: true }));
+}
+
+function renderMeta(updatedAt) {
+  ui.scriptStat.textContent = fmt(items.length);
+  if (!updatedAt) return;
+  const d = new Date(updatedAt);
+  ui.updatedStat.textContent =
+    d.toDateString() === new Date().toDateString()
+      ? `วันนี้ ${d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
+      : d.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
+  ui.lastUpdate.textContent = `ข้อมูลล่าสุด ${d.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · รีเฟรชเองทุก 5 นาที`;
+}
+
+function skeleton() {
+  ui.featured.innerHTML = "";
+  ui.rows.innerHTML = Array.from({ length: 4 }, () =>
+    '<div class="row sk"><div class="row-icon"></div><div class="row-info"><div class="bar" style="width:45%"></div><div class="bar" style="width:80%"></div></div></div>'
+  ).join("");
+  ui.results.textContent = "กำลังดึงข้อมูล...";
+}
+
+function fillDrawer(it) {
+  ui.dTitle.textContent = it.name || "ไม่มีชื่อ";
+  ui.dDesc.textContent = it.description || "";
+  ui.dDesc.hidden = !it.description;
+  ui.dImage.src = safeImage(it.image);
+  ui.dImage.onerror = () => (ui.dImage.src = FALLBACK_IMAGE);
+  const code = String(it.script || "");
+  const lines = code ? code.split("\n") : ["-- ยังไม่มีโค้ด"];
+  ui.code.replaceChildren(
+    ...lines.map((line) => {
+      const s = document.createElement("span");
+      s.className = "ln";
+      s.textContent = line || " ";
+      return s;
+    })
+  );
+  ui.codeInfo.textContent = `${fmt(lines.length)} บรรทัด · ${fmt(code.length)} ตัวอักษร`;
+  const games = gamesOf(it);
+  ui.dMaps.innerHTML = games.length
+    ? games
+        .map((m) => {
+          const url = safeGameURL(m.url);
+          const inner = `<i class="fa-solid fa-play"></i><span>${esc(m.name)}</span>${url ? '<i class="fa-solid fa-arrow-up-right-from-square ext"></i>' : ""}`;
+          return url ? `<a class="game-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${inner}</a>` : `<div class="game-link">${inner}</div>`;
+        })
+        .join("")
+    : '<div class="game-link"><i class="fa-solid fa-globe"></i><span>ใช้ได้ทั่วไป</span></div>';
+}
+
+function openDrawer(id, push) {
+  const it = byId(id);
+  if (!it) return false;
+  if (!openItem) lastFocus = document.activeElement;
+  openItem = it;
+  fillDrawer(it);
+  if (push) history.pushState({ script: it.id }, "", `?script=${it.id}`);
+  document.title = `${it.name || "สคริปต์"} | ZeroHub Scripts`;
+  ui.backdrop.hidden = false;
+  ui.drawer.hidden = false;
+  document.body.classList.add("lock");
+  ui.drawer.querySelector(".drawer-body").scrollTop = 0;
+  ui.close.focus({ preventScroll: true });
+  return true;
+}
+
+function hideDrawer() {
+  openItem = null;
+  ui.drawer.hidden = true;
+  ui.backdrop.hidden = true;
+  document.body.classList.remove("lock");
+  document.title = "ZeroHub Scripts | สคริปต์ Roblox ฟรีจาก ZeroHub";
+  if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
+}
+
+function closeDrawer() {
+  if (history.state && history.state.script != null) return history.back();
+  history.replaceState({}, "", location.pathname + location.hash);
+  hideDrawer();
+}
+
+function syncFromURL() {
+  const id = new URLSearchParams(location.search).get("script");
+  if (id && openDrawer(id, false)) return;
+  if (id) history.replaceState({}, "", location.pathname + location.hash);
+  if (openItem) hideDrawer();
+}
+
+async function load(showSkeleton) {
   if (loading) return;
   loading = true;
-  if (showSkeleton) skeletons();
-  el.refresh.disabled = true;
-  el.refresh.classList.add("is-spinning");
+  if (showSkeleton) skeleton();
+  ui.refresh.disabled = true;
+  ui.refresh.classList.add("spin");
   try {
     const r = await fetch(DATA_URL, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
@@ -220,39 +276,39 @@ async function loadData(showSkeleton) {
     });
     const body = await r.json().catch(() => null);
     if (!r.ok) {
-      const err = new Error(body && body.message ? body.message : `HTTP ${r.status}`);
+      const err = new Error((body && body.message) || `HTTP ${r.status}`);
       err.code = body && body.code;
       throw err;
     }
     items = Array.isArray(body) ? body : [];
-    const latest = items.reduce((m, it) => (it.updated_at && it.updated_at > m ? it.updated_at : m), "");
-    renderStats(latest || new Date().toISOString());
-    renderCards();
     lastLoad = Date.now();
-    if (current) {
-      const fresh = items.find((x) => Number(x.id) === Number(current.id));
-      if (fresh) current = fresh;
-      else closeDetail();
+    renderMeta(items.reduce((m, it) => (it.updated_at > m ? it.updated_at : m), "") || new Date().toISOString());
+    renderFilter();
+    renderList();
+    if (openItem) {
+      const fresh = byId(openItem.id);
+      if (fresh) {
+        openItem = fresh;
+        fillDrawer(fresh);
+      } else closeDrawer();
     } else syncFromURL();
+    return true;
   } catch (err) {
     if (!items.length) {
       const missing = err.code === "PGRST205" || err.code === "42P01";
-      const timeout = err.name === "TimeoutError";
-      el.cards.innerHTML = stateBox(
-        '<i class="fa-solid fa-triangle-exclamation"></i>',
-        missing ? "ยังไม่ได้ตั้งค่าฐานข้อมูล" : timeout ? "การเชื่อมต่อใช้เวลานานเกินไป" : "โหลดรายการไม่สำเร็จ",
-        missing ? "ต้องสร้างตาราง scripts ใน Supabase ก่อน" : "ตรวจสอบอินเทอร์เน็ตแล้วลองโหลดใหม่อีกครั้ง",
-        true
-      );
-      el.results.textContent = "ยังโหลดรายการไม่ได้";
-      el.lastUpdate.textContent = "เชื่อมต่อข้อมูลไม่สำเร็จ";
+      ui.featured.innerHTML = "";
+      ui.rows.innerHTML = `<div class="state"><i class="fa-solid fa-plug-circle-xmark"></i><b>${
+        missing ? "ฐานข้อมูลยังไม่พร้อม" : err.name === "TimeoutError" ? "เซิร์ฟเวอร์ตอบช้าเกินไป" : "ดึงข้อมูลไม่สำเร็จ"
+      }</b><span>${missing ? "ต้องสร้างตาราง scripts ใน Supabase ก่อน" : "เช็กอินเทอร์เน็ตแล้วลองอีกครั้ง"}</span><button class="z-btn z-red" type="button" data-retry><i class="fa-solid fa-arrows-rotate"></i><span>ลองอีกครั้ง</span></button></div>`;
+      ui.results.textContent = "เชื่อมต่อไม่ได้";
     } else {
-      showToast("อัปเดตข้อมูลไม่สำเร็จ กำลังแสดงรายการเดิม");
+      toast("รีเฟรชไม่สำเร็จ ยังแสดงข้อมูลชุดเดิมอยู่");
     }
+    return false;
   } finally {
     loading = false;
-    el.refresh.disabled = false;
-    el.refresh.classList.remove("is-spinning");
+    ui.refresh.disabled = false;
+    ui.refresh.classList.remove("spin");
   }
 }
 
@@ -261,19 +317,14 @@ function setupEmbers() {
   const ctx = canvas.getContext("2d");
   let w, h, parts;
   const spawn = (any) => ({
-    x: Math.random() * w,
-    y: any ? Math.random() * h : h + 10,
-    r: Math.random() * 2 + 0.6,
-    vy: Math.random() * 0.5 + 0.2,
-    vx: (Math.random() - 0.5) * 0.3,
-    a: Math.random() * 0.55 + 0.25,
-    white: Math.random() < 0.18,
-    t: Math.random() * 100,
+    x: Math.random() * w, y: any ? Math.random() * h : h + 10, r: Math.random() * 1.8 + 0.5,
+    vy: Math.random() * 0.45 + 0.15, vx: (Math.random() - 0.5) * 0.25, a: Math.random() * 0.5 + 0.2,
+    white: Math.random() < 0.15, t: Math.random() * 100,
   });
   const resize = () => {
     w = canvas.width = innerWidth;
     h = canvas.height = innerHeight;
-    parts = Array.from({ length: Math.min(55, Math.floor(w / 22)) }, () => spawn(true));
+    parts = Array.from({ length: Math.min(45, Math.floor(w / 26)) }, () => spawn(true));
   };
   const tick = () => {
     if (!document.hidden) {
@@ -281,12 +332,12 @@ function setupEmbers() {
       parts.forEach((p, i) => {
         p.t += 0.02;
         p.y -= p.vy;
-        p.x += p.vx + Math.sin(p.t) * 0.25;
+        p.x += p.vx + Math.sin(p.t) * 0.2;
         if (p.y < -10) parts[i] = spawn(false);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fillStyle = p.white ? `rgba(255,255,255,${p.a})` : `rgba(255,40,40,${p.a})`;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = p.white ? "#fff" : "#ff1e1e";
         ctx.fill();
       });
@@ -298,58 +349,70 @@ function setupEmbers() {
   if (!reduceMotion) tick();
 }
 
-el.cards.addEventListener("click", (e) => {
-  if (e.target.closest("[data-retry]")) return loadData(true);
-  const card = e.target.closest(".card[data-id]");
-  if (card) openDetail(card.dataset.id, true);
+document.querySelector(".arsenal").addEventListener("click", (e) => {
+  if (e.target.closest("[data-retry]")) return load(true);
+  const copyBtn = e.target.closest("[data-copy]");
+  if (copyBtn) return copyScript(byId(copyBtn.dataset.copy), copyBtn);
+  const opener = e.target.closest("[data-open]");
+  if (opener) openDrawer(opener.dataset.open, true);
 });
-el.cards.addEventListener("pointermove", (e) => {
-  const card = e.target.closest(".card");
-  if (!card) return;
-  const r = card.getBoundingClientRect();
-  card.style.setProperty("--mx", `${e.clientX - r.left}px`);
-  card.style.setProperty("--my", `${e.clientY - r.top}px`);
+ui.mapFilter.addEventListener("click", (e) => {
+  const b = e.target.closest(".mf");
+  if (!b) return;
+  activeMap = b.dataset.map;
+  renderFilter();
+  renderList();
 });
-el.search.addEventListener("input", renderCards);
-el.clear.addEventListener("click", () => {
-  el.search.value = "";
-  renderCards();
-  el.search.focus();
+ui.search.addEventListener("input", renderList);
+ui.clear.addEventListener("click", () => {
+  ui.search.value = "";
+  renderList();
+  ui.search.focus();
 });
-el.refresh.addEventListener("click", async () => {
-  await loadData(false);
-  showToast("อัปเดตรายการแล้ว", true);
+ui.refresh.addEventListener("click", async () => {
+  if (await load(false)) toast("ดึงข้อมูลล่าสุดแล้ว", true);
 });
-el.back.addEventListener("click", closeDetail);
-el.brand.addEventListener("click", (e) => {
+ui.quickCopy.addEventListener("click", () => {
+  if (!items.length) return toast("รอข้อมูลโหลดเสร็จก่อนนะ");
+  copyScript(items[0], ui.quickCopy);
+});
+ui.copy.addEventListener("click", () => copyScript(openItem, ui.copy));
+ui.close.addEventListener("click", closeDrawer);
+ui.backdrop.addEventListener("click", closeDrawer);
+ui.brand.addEventListener("click", (e) => {
   e.preventDefault();
-  if (location.search) history.pushState({}, "", location.pathname);
-  showHome();
+  if (openItem) closeDrawer();
+  activeMap = "";
+  ui.search.value = "";
+  renderFilter();
+  renderList();
   window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
-});
-el.copy.addEventListener("click", async () => {
-  if (!current || !current.script) return showToast("ไม่พบโค้ดสำหรับคัดลอก");
-  if (!(await copyText(String(current.script)))) return showToast("คัดลอกไม่สำเร็จ กรุณาเลือกและคัดลอกโค้ดเอง");
-  el.copy.classList.add("success");
-  el.copy.querySelector("i").className = "fa-solid fa-check";
-  el.copy.querySelector("span").textContent = "คัดลอกแล้ว";
-  showToast("คัดลอกโค้ดแล้ว นำไปวางใน executor ได้เลย", true);
-  setTimeout(resetCopyButton, 2000);
 });
 addEventListener("popstate", syncFromURL);
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !el.detail.hidden) closeDetail();
-  if (e.key === "/" && el.detail.hidden && document.activeElement !== el.search) {
+  if (e.key === "Escape" && openItem) return closeDrawer();
+  if (e.key === "Tab" && openItem) {
+    const f = [...ui.drawer.querySelectorAll("button, a[href]")].filter((x) => x.offsetParent);
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) {
+      e.preventDefault();
+      f[f.length - 1].focus();
+    } else if (!e.shiftKey && document.activeElement === f[f.length - 1]) {
+      e.preventDefault();
+      f[0].focus();
+    }
+  }
+  if (e.key === "/" && !openItem && document.activeElement !== ui.search) {
     e.preventDefault();
-    el.search.focus();
+    ui.search.focus();
   }
 });
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && Date.now() - lastLoad > REFRESH_MS) loadData(false);
+  if (!document.hidden && Date.now() - lastLoad > REFRESH_MS) load(false);
 });
 
 setupEmbers();
-loadData(true);
+load(true);
 setInterval(() => {
-  if (!document.hidden) loadData(false);
+  if (!document.hidden) load(false);
 }, REFRESH_MS);
