@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZeroHub Scripts - แจกสคริปต์ Roblox ฟรี</title>
+  <meta name="description" content="คลังสคริปต์ Roblox ของ ZeroHub แจกฟรี ค้นหา ดูโค้ด แล้วคัดลอกไปใช้ได้ทันที">
+  <meta name="theme-color" content="#ff1e1e">
+  <link rel="icon" href="img/favicon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="embers" aria-hidden="true"></canvas>
+
+  <header class="topbar">
+    <a class="brand" href="./" id="brandHome" aria-label="กลับหน้าแรก ZeroHub Scripts">
+      <img src="img/logo-sm.webp" alt="">
+      <span><span class="brand-title">ZERO <b>HUB</b></span><span class="brand-sub">คลังสคริปต์ Roblox ฟรี</span></span>
+    </a>
+    <div class="top-actions">
+      <button class="btn btn-icon" id="refreshButton" type="button" aria-label="โหลดรายการใหม่" title="โหลดรายการใหม่"><i class="fa-solid fa-rotate-right"></i><span class="label-desktop">รีเฟรช</span></button>
+      <a class="btn btn-red" href="https://discord.gg/CYxyhhBNba" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-discord"></i><span class="label-desktop">เข้าร่วม Discord</span></a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="homeView">
+      <section class="hero" aria-labelledby="heroTitle">
+        <img class="hero-logo" src="img/zerohub.webp" alt="โลโก้ ZeroHub">
+        <span class="badge"><span class="dot"></span> คลังสคริปต์พร้อมใช้งาน · แจกฟรี 100%</span>
+        <h1 id="heroTitle">ค้นหา คัดลอก แล้วเริ่มเล่น<span class="display">ZERO HUB</span></h1>
+        <p>รวมสคริปต์ Roblox ไว้ในที่เดียว ค้นหาจากชื่อสคริปต์หรือแมพที่รองรับ เปิดดูโค้ด แล้วคัดลอกไปใช้ได้ทันที</p>
+        <div class="hero-actions">
+          <a class="btn btn-red btn-lg" href="#scripts"><i class="fa-solid fa-code"></i>ดูสคริปต์ทั้งหมด</a>
+          <a class="btn btn-lg" href="https://discord.gg/CYxyhhBNba" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-discord"></i>พูดคุยใน Discord</a>
+        </div>
+        <div class="stats" aria-label="สถิติคลังสคริปต์">
+          <div class="stat"><span class="stat-value" id="scriptStat">-</span><span class="stat-label">สคริปต์ทั้งหมด</span></div>
+          <div class="stat"><span class="stat-value" id="mapStat">-</span><span class="stat-label">แมพที่รองรับ</span></div>
+          <div class="stat"><span class="stat-value" id="updatedStat">-</span><span class="stat-label">อัปเดตล่าสุด</span></div>
+        </div>
+      </section>
+
+      <section class="catalog" id="scripts" aria-labelledby="catalogTitle">
+        <div class="catalog-head">
+          <div>
+            <span class="kicker">Scripts</span>
+            <h2 class="section-title" id="catalogTitle">รายการสคริปต์</h2>
+            <p class="section-desc">กดการ์ดเพื่อดูโค้ดและคัดลอก</p>
+          </div>
+          <div class="search-row">
+            <label class="search-wrap">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <input class="search-input" id="searchInput" type="search" placeholder="ค้นหาชื่อสคริปต์ หรือชื่อแมพ..." autocomplete="off" aria-label="ค้นหาสคริปต์หรือแมพ">
+            </label>
+            <button class="btn" id="clearSearch" type="button" aria-label="ล้างคำค้นหา" title="ล้างคำค้นหา" hidden><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+        <div class="results-line"><span id="resultsText" aria-live="polite">กำลังโหลดรายการ...</span><span id="lastUpdateText"><i class="fa-solid fa-clock-rotate-left"></i> อัปเดตข้อมูลอัตโนมัติทุก 5 นาที</span></div>
+        <div class="cards" id="cards" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="detail" id="detailView" hidden aria-labelledby="detailTitle">
+      <button class="btn back-btn" id="backButton" type="button"><i class="fa-solid fa-arrow-left"></i>กลับไปยังรายการ</button>
+      <div class="detail-head">
+        <img class="detail-image" id="detailImage" src="img/zerohub.webp" alt="">
+        <div>
+          <div class="detail-eyebrow">ข้อมูลสคริปต์</div>
+          <h1 class="detail-title" id="detailTitle">สคริปต์</h1>
+          <p class="detail-desc" id="detailDesc"></p>
+          <div class="tags" id="detailTags"></div>
+        </div>
+      </div>
+
+      <section class="panel" aria-labelledby="codeTitle">
+        <div class="panel-head">
+          <h2 class="panel-title" id="codeTitle"><i class="fa-solid fa-code"></i>โค้ดสคริปต์</h2>
+          <span class="panel-info" id="codeInfo">-</span>
+        </div>
+        <div class="code-window">
+          <div class="code-top"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="code-lang">Lua</span></div>
+          <pre class="code" id="codeBlock"></pre>
+        </div>
+        <button class="btn btn-red btn-lg copy-btn" id="copyButton" type="button"><i class="fa-regular fa-copy"></i><span>คัดลอกโค้ดสคริปต์</span></button>
+      </section>
+
+      <section class="panel" id="mapsPanel" hidden aria-labelledby="mapsTitle">
+        <div class="panel-head">
+          <h2 class="panel-title" id="mapsTitle"><i class="fa-solid fa-gamepad"></i>แมพที่รองรับ</h2>
+          <span class="count-pill" id="mapsCount">0 แมพ</span>
+        </div>
+        <div class="map-list" id="mapList"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span class="footer-brand"><img src="img/logo-sm.webp" alt="">ZeroHub Scripts</span>
+      <span>ข้อมูลอัปเดตอัตโนมัติทุก 5 นาที · <a href="https://discord.gg/CYxyhhBNba" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-discord"></i> Discord</a></span>
+    </div>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
