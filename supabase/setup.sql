@@ -59,7 +59,7 @@ insert into public.scripts (name, description, image, script, maps, sort_order) 
 ),
 (
   'All Star Tower Defense',
-  'ออโต้วางยูนิต ออโต้อัปเกรด ฟาร์มด่าน',
+  'ระบบมาโคร ออโต้จอย',
   'img/astd.webp',
   'loadstring(game:HttpGet("https://zero-hub-api.onrender.com/api/script/ZeroHub"))()',
   '[{"name":"All Star Tower Defense","url":"https://www.roblox.com/games/4996049426"}]',
@@ -67,7 +67,7 @@ insert into public.scripts (name, description, image, script, maps, sort_order) 
 ),
 (
   'Break and Steal an Egg',
-  'ออโต้ขโมยไข่ ออโต้ขาย',
+  'ออโต้ตีไข่',
   'img/egg.webp',
   'loadstring(game:HttpGet("https://zero-hub-api.onrender.com/api/script/ZeroHub"))()',
   '[{"name":"Break and Steal an Egg","url":"https://www.roblox.com/games/114326934417838"}]',
