@@ -53,7 +53,7 @@ insert into public.scripts (name, description, image, script, maps, sort_order) 
   'Anime Zero',
   'ออโต้ฟาร์ม ออโต้สกิล ออโต้เควส',
   'img/az.webp',
-  'loadstring(game:HttpGet("https://raw.githubusercontent.com/ZeroHubX2/Zero-X/refs/heads/main/Anime%20Zero"))()',
+  'loadstring(game:HttpGet("https://zero-hub-api.onrender.com/api/script/ZeroHub"))()',
   '[{"name":"Anime Zero","url":"https://www.roblox.com/games/114574503491412"}]',
   2
 ),
@@ -61,7 +61,7 @@ insert into public.scripts (name, description, image, script, maps, sort_order) 
   'All Star Tower Defense',
   'ออโต้วางยูนิต ออโต้อัปเกรด ฟาร์มด่าน',
   'img/astd.webp',
-  'loadstring(game:HttpGet("https://raw.githubusercontent.com/ZeroHubX2/All-Star-Towerdefense/refs/heads/main/Zero%20Hub"))()',
+  'loadstring(game:HttpGet("https://zero-hub-api.onrender.com/api/script/ZeroHub"))()',
   '[{"name":"All Star Tower Defense","url":"https://www.roblox.com/games/4996049426"}]',
   3
 ),
@@ -69,7 +69,7 @@ insert into public.scripts (name, description, image, script, maps, sort_order) 
   'Break and Steal an Egg',
   'ออโต้ขโมยไข่ ออโต้ขาย',
   'img/egg.webp',
-  'loadstring(game:HttpGet("https://raw.githubusercontent.com/ZeroHubX2/Break-and-Steal-an-Egg/refs/heads/main/Zero%20Hub"))()',
+  'loadstring(game:HttpGet("https://zero-hub-api.onrender.com/api/script/ZeroHub"))()',
   '[{"name":"Break and Steal an Egg","url":"https://www.roblox.com/games/114326934417838"}]',
   4
 );
