@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://jfqiqcyzcsfjolkctgay.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWlxY3l6Y3Nmam9sa2N0Z2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzMxMDAsImV4cCI6MjEwODUwOTEwMH0.eka_J_CYoY3RilcVPPjuiTKWGSCGYdydD4AUJK2W6os";
 const DATA_URL = `${SUPABASE_URL}/rest/v1/scripts?select=id,name,description,image,script,maps,updated_at&order=sort_order.asc,id.asc`;
 const REFRESH_MS = 5 * 60 * 1000;
+const SITE_UPDATED = "2026-10-27T12:14:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -21,6 +22,8 @@ let activeMap = "";
 let openItem = null;
 let loading = false;
 let lastLoad = 0;
+let nextLoadAt = 0;
+let editedLabel = "";
 let lastFocus = null;
 let toastTimer;
 
@@ -184,7 +187,21 @@ function renderMeta(updatedAt) {
     d.toDateString() === new Date().toDateString()
       ? `วันนี้ ${d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
       : d.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
-  ui.lastUpdate.textContent = `ข้อมูลล่าสุด ${d.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · รีเฟรชเองทุก 5 นาที`;
+  editedLabel = `แก้ไขล่าสุด ${d.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+  renderClock();
+}
+
+function renderClock() {
+  if (!editedLabel) return;
+  const parts = [editedLabel];
+  if (lastLoad) parts.push(`เช็กข้อมูลล่าสุด ${new Date(lastLoad).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+  if (loading) parts.push("กำลังเช็ก...");
+  else if (document.hidden) parts.push("พักเช็กอัตโนมัติ");
+  else {
+    const left = Math.max(0, Math.ceil((nextLoadAt - Date.now()) / 1000));
+    parts.push(`เช็กรอบถัดไปใน ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`);
+  }
+  ui.lastUpdate.textContent = parts.join(" · ");
 }
 
 function skeleton() {
@@ -265,6 +282,8 @@ function syncFromURL() {
 async function load(showSkeleton) {
   if (loading) return;
   loading = true;
+  nextLoadAt = Date.now() + REFRESH_MS;
+  renderClock();
   if (showSkeleton) skeleton();
   ui.refresh.disabled = true;
   ui.refresh.classList.add("spin");
@@ -282,7 +301,8 @@ async function load(showSkeleton) {
     }
     items = Array.isArray(body) ? body : [];
     lastLoad = Date.now();
-    renderMeta(items.reduce((m, it) => (it.updated_at > m ? it.updated_at : m), "") || new Date().toISOString());
+    const dbLatest = items.reduce((m, it) => (it.updated_at > m ? it.updated_at : m), "");
+    renderMeta(new Date(dbLatest || 0) > new Date(SITE_UPDATED) ? dbLatest : SITE_UPDATED);
     renderFilter();
     renderList();
     if (openItem) {
@@ -309,6 +329,7 @@ async function load(showSkeleton) {
     loading = false;
     ui.refresh.disabled = false;
     ui.refresh.classList.remove("spin");
+    renderClock();
   }
 }
 
@@ -407,12 +428,9 @@ document.addEventListener("keydown", (e) => {
     ui.search.focus();
   }
 });
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && Date.now() - lastLoad > REFRESH_MS) load(false);
-});
-
 setupEmbers();
 load(true);
 setInterval(() => {
-  if (!document.hidden) load(false);
-}, REFRESH_MS);
+  if (!document.hidden && !loading && Date.now() >= nextLoadAt) load(false);
+  else renderClock();
+}, 1000);
