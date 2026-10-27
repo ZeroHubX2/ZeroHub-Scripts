@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -45,6 +45,12 @@
         <span class="ss-dot"></span>
         <span class="ss-text"><small>SYSTEM STATUS</small><b id="sideStatusText">กำลังสแกน...</b></span>
         <i class="fa-solid fa-chevron-right"></i>
+      </a>
+
+      <a class="side-news" href="#news" id="sideNews" hidden>
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>ประกาศอัปเดต</span>
+        <b id="sideNewsCount"></b>
       </a>
 
       <div class="side-group side-stats">
@@ -95,7 +101,15 @@
             <small class="sb-timer" id="sbTimer">-</small>
           </div>
         </div>
-        <div class="sb-grid" id="sbGrid" aria-live="polite"></div>
+      </section>
+
+      <section class="news" id="news" aria-labelledby="newsTitle" hidden>
+        <div class="news-head">
+          <h2 id="newsTitle"><i class="fa-solid fa-bullhorn"></i>ประกาศอัปเดต</h2>
+          <span class="news-tag-line">UPDATE LOG</span>
+        </div>
+        <div class="news-list" id="newsList"></div>
+        <button class="z-btn news-more" id="newsMore" type="button" hidden><i class="fa-solid fa-chevron-down"></i><span>ดูประกาศทั้งหมด</span></button>
       </section>
 
       <section class="arsenal" id="arsenal" aria-labelledby="arsenalTitle">
@@ -145,6 +159,6 @@
   </aside>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

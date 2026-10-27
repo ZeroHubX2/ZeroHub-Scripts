@@ -4,9 +4,13 @@ const BASE_FIELDS = "id,name,description,image,script,maps,updated_at";
 const STATUS_FIELDS = "status,status_note,status_updated_at,check_url";
 const dataURL = (fields) => `${SUPABASE_URL}/rest/v1/scripts?select=${fields}&order=sort_order.asc,id.asc`;
 const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
+const NEWS_URL = `${SUPABASE_URL}/rest/v1/announcements?select=id,title,body,tag,pinned,created_at&order=pinned.desc,created_at.desc&limit=30`;
+const NEWS_SHOWN = 4;
+const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
+const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-27T12:27:00Z";
+const SITE_UPDATED = "2026-10-27T12:41:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -20,8 +24,9 @@ const ui = {
   dTitle: $("drawerTitle"), dDesc: $("drawerDesc"), dMaps: $("drawerMaps"), code: $("codeBlock"),
   codeInfo: $("codeInfo"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
   sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
-  sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbGrid: $("sbGrid"), sbTimer: $("sbTimer"), scan: $("scanButton"),
+  sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbTimer: $("sbTimer"), scan: $("scanButton"),
   sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
+  news: $("news"), newsList: $("newsList"), newsMore: $("newsMore"), sideNews: $("sideNews"), sideNewsCount: $("sideNewsCount"),
 };
 
 let items = [];
@@ -33,16 +38,18 @@ let nextLoadAt = 0;
 let editedLabel = "";
 let lastFocus = null;
 let toastTimer;
-const hasStatusUI = !!(ui.sbHero && ui.sbGrid && ui.scan && ui.sideStatus && ui.dStatus);
+const hasStatusUI = !!(ui.sbHero && ui.scan && ui.sideStatus && ui.dStatus);
 let statusFields = true;
 let scanning = false;
 let lastScan = 0;
 let nextScanAt = 0;
 const checks = new Map();
+let news = [];
+let newsExpanded = false;
 
 const LEVEL = {
-  ok: { pill: "ONLINE", head: "ทุกระบบพร้อมลุย", sub: "โหลดเดอร์และสคริปต์ทุกเกมทำงานปกติ คัดลอกไปใช้ได้เลย", side: "ทุกระบบปกติ", icon: "fa-shield-halved" },
-  warn: { pill: "UPDATING", head: "บางระบบกำลังอัปเดต", sub: "บางเกมกำลังปรับปรุงหลังเกมอัปเดต ระหว่างนี้อาจใช้ได้ไม่ครบทุกฟีเจอร์", side: "มีระบบกำลังอัปเดต", icon: "fa-screwdriver-wrench" },
+  ok: { pill: "ONLINE", head: "ทุกแมพพร้อมใช้งาน", sub: "โหลดเดอร์และสคริปต์ทุกเกมทำงานปกติ คัดลอกไปใช้ได้เลย", side: "ทุกแมพพร้อมใช้งาน", icon: "fa-shield-halved" },
+  warn: { pill: "UPDATING", head: "บางแมพกำลังอัปเดต", sub: "บางเกมกำลังปรับปรุงหลังเกมอัปเดต ระหว่างนี้อาจใช้ได้ไม่ครบทุกฟีเจอร์", side: "บางแมพกำลังอัปเดต", icon: "fa-screwdriver-wrench" },
   bad: { pill: "DOWN", head: "ตรวจพบระบบขัดข้อง", sub: "มีบางส่วนใช้งานไม่ได้ตอนนี้ ทีมงานกำลังเร่งแก้ ติดตามใน Discord", side: "มีระบบขัดข้อง", icon: "fa-triangle-exclamation" },
   loading: { pill: "SCANNING", head: "กำลังสแกนระบบ...", sub: "ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์", side: "กำลังสแกน...", icon: "fa-satellite-dish" },
 };
@@ -210,35 +217,6 @@ function ago(ts) {
 
 const clock = (ts) => new Date(ts).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-function cardHTML(comp) {
-  const c = checks.get(comp.key);
-  const last = c && c.last;
-  const hist = c ? c.hist : [];
-  const okRate = hist.length ? Math.round((hist.filter((h) => h.ok).length / hist.length) * 100) : null;
-  const maxMs = Math.max(400, ...hist.filter((h) => h.ok).map((h) => h.ms));
-  const slow = comp.item ? 8000 : 6000;
-  const bars = Array.from({ length: 24 }, (_, i) => hist[hist.length - 24 + i]).map((h) =>
-    !h ? '<span class="empty"></span>' : !h.ok ? '<span class="fail"></span>' : `<span class="${h.ms > slow ? "slow" : ""}" style="height:${Math.max(14, Math.round((h.ms / maxMs) * 100))}%"></span>`
-  );
-  const it = comp.item;
-  const icon = it
-    ? `<img class="sc-icon" src="${esc(safeImage(it.image))}" alt="">`
-    : '<span class="sc-icon"><i class="fa-solid fa-server"></i></span>';
-  const third = it
-    ? `<div><small>ไฟล์</small><b>${last && last.ok && last.size ? `${fmt(Math.round(last.size / 1024))}KB` : "-"}</b></div>`
-    : `<div><small>เช็กแล้ว</small><b>${fmt(hist.length)}</b></div>`;
-  const note = it && it.status_note ? `<p class="sc-note">${esc(it.status_note)}</p>` : "";
-  const foot = it && it.status_updated_at && it.status && it.status !== "working"
-    ? `ตั้งสถานะเมื่อ ${ago(it.status_updated_at)}`
-    : last ? `เช็กล่าสุด ${clock(last.at)}` : "รอสแกนรอบแรก";
-  return `<article class="sc" data-level="${comp.level}">
-    <div class="sc-top">${icon}<div class="sc-name"><b title="${esc(it ? it.name : "ZeroHub Loader API")}">${esc(it ? it.name : "ZeroHub Loader API")}</b><span class="sc-sub">${pill(comp.level)}<small>${it ? "สคริปต์เกม" : "เซิร์ฟเวอร์โหลดเดอร์"}</small></span></div></div>
-    <div class="sc-metrics"><div><small>Ping</small><b>${last && last.ok ? `${fmt(last.ms)}ms` : "-"}</b></div><div><small>สำเร็จ</small><b>${okRate === null ? "-" : `${okRate}%`}</b></div>${third}</div>
-    <div class="spark" title="ผลเช็ก 24 ครั้งล่าสุด">${bars.join("")}</div>
-    ${note}<span class="sc-foot">${foot}</span>
-  </article>`;
-}
-
 function renderStatus() {
   if (!hasStatusUI) return;
   const comps = components();
@@ -250,11 +228,11 @@ function renderStatus() {
   ui.sbSub.textContent = info.sub;
   ui.sbIcon.className = `fa-solid ${info.icon}`;
   ui.sideStatusText.textContent = info.side;
-  ui.sbOk.textContent = comps.filter((c) => c.level === "ok").length;
-  ui.sbWarn.textContent = comps.filter((c) => c.level === "warn").length;
-  ui.sbBad.textContent = comps.filter((c) => c.level === "bad").length;
-  ui.sbGrid.innerHTML = comps.map(cardHTML).join("");
-  ui.sbGrid.querySelectorAll("img.sc-icon").forEach((img) => img.addEventListener("error", () => (img.src = FALLBACK_IMAGE), { once: true }));
+  const games = comps.filter((c) => c.item);
+  const counted = games.length ? games : comps;
+  ui.sbOk.textContent = counted.filter((c) => c.level === "ok").length;
+  ui.sbWarn.textContent = counted.filter((c) => c.level === "warn").length;
+  ui.sbBad.textContent = counted.filter((c) => c.level === "bad").length;
   renderScanTimer();
 }
 
@@ -317,6 +295,52 @@ async function scan() {
   renderStatus();
   renderList();
   if (openItem) renderDrawerStatus(openItem);
+}
+
+function renderNews() {
+  if (!ui.news || !ui.newsList) return;
+  ui.news.hidden = !news.length;
+  if (ui.sideNews) ui.sideNews.hidden = !news.length;
+  if (!news.length) return;
+  const fresh = news.filter((n) => Date.now() - new Date(n.created_at).getTime() < NEWS_FRESH_MS);
+  if (ui.sideNewsCount) ui.sideNewsCount.textContent = fresh.length ? fmt(fresh.length) : "";
+  const shown = newsExpanded ? news : news.slice(0, NEWS_SHOWN);
+  ui.newsList.innerHTML = shown
+    .map((n) => {
+      const tag = NEWS_TAGS[n.tag] ? n.tag : "update";
+      const d = new Date(n.created_at);
+      const isFresh = Date.now() - d.getTime() < NEWS_FRESH_MS;
+      return `<article class="news-item${n.pinned ? " pinned" : ""}" data-tag="${tag}">
+        <div class="ni-date"><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString("th-TH", { month: "short" }))}</small></div>
+        <div class="ni-body">
+          <div class="ni-top"><span class="ni-tag">${NEWS_TAGS[tag]}</span>${n.pinned ? '<span class="ni-pin"><i class="fa-solid fa-thumbtack"></i>ปักหมุด</span>' : ""}${isFresh ? '<span class="ni-new">NEW</span>' : ""}<span class="ni-time">${esc(ago(n.created_at))}</span></div>
+          <h3>${esc(n.title)}</h3>
+          ${n.body ? `<p>${esc(n.body)}</p>` : ""}
+        </div>
+      </article>`;
+    })
+    .join("");
+  if (ui.newsMore) {
+    ui.newsMore.hidden = news.length <= NEWS_SHOWN;
+    ui.newsMore.querySelector("i").className = `fa-solid fa-chevron-${newsExpanded ? "up" : "down"}`;
+    ui.newsMore.querySelector("span").textContent = newsExpanded ? "ย่อประกาศ" : `ดูประกาศทั้งหมด (${fmt(news.length)})`;
+  }
+}
+
+async function loadNews() {
+  try {
+    const r = await fetch(NEWS_URL, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const body = await r.json();
+    news = Array.isArray(body) ? body.filter((n) => n && n.title && n.created_at) : [];
+  } catch {
+    if (!news.length) news = [];
+  }
+  renderNews();
 }
 
 function renderList() {
@@ -504,6 +528,7 @@ async function load(showSkeleton) {
     renderFilter();
     renderList();
     renderStatus();
+    loadNews();
     if (!lastScan && !scanning) scan();
     if (openItem) {
       const fresh = byId(openItem.id);
@@ -629,6 +654,12 @@ document.addEventListener("keydown", (e) => {
   }
 });
 if (hasStatusUI) ui.scan.addEventListener("click", scan);
+if (ui.newsMore) {
+  ui.newsMore.addEventListener("click", () => {
+    newsExpanded = !newsExpanded;
+    renderNews();
+  });
+}
 
 setupEmbers();
 load(true);
