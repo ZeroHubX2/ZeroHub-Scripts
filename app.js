@@ -4,13 +4,14 @@ const BASE_FIELDS = "id,name,description,image,script,maps,updated_at";
 const STATUS_FIELDS = "status,status_note,status_updated_at,check_url";
 const dataURL = (fields) => `${SUPABASE_URL}/rest/v1/scripts?select=${fields}&order=sort_order.asc,id.asc`;
 const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
-const NEWS_URL = `${SUPABASE_URL}/rest/v1/announcements?select=id,title,body,tag,pinned,created_at&order=pinned.desc,created_at.desc&limit=30`;
+const newsURL = (img) => `${SUPABASE_URL}/rest/v1/announcements?select=id,title,body,tag,pinned,created_at${img ? ",image" : ""}&order=pinned.desc,created_at.desc&limit=30`;
+const NEWS_SEEN_KEY = "zh_news_seen";
 const NEWS_SHOWN = 4;
 const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-27T12:41:00Z";
+const SITE_UPDATED = "2026-10-27T13:10:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -26,7 +27,8 @@ const ui = {
   sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
   sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbTimer: $("sbTimer"), scan: $("scanButton"),
   sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
-  news: $("news"), newsList: $("newsList"), newsMore: $("newsMore"), sideNews: $("sideNews"), sideNewsCount: $("sideNewsCount"),
+  news: $("news"), newsList: $("newsList"), newsMore: $("newsMore"), sideNews: $("sideNews"), sideNewsDot: $("sideNewsDot"),
+  lightbox: $("lightbox"), lightboxImg: $("lightboxImg"),
 };
 
 let items = [];
@@ -46,6 +48,8 @@ let nextScanAt = 0;
 const checks = new Map();
 let news = [];
 let newsExpanded = false;
+let newsImage = true;
+let lightboxFocus = null;
 
 const LEVEL = {
   ok: { pill: "ONLINE", head: "ทุกแมพพร้อมใช้งาน", sub: "โหลดเดอร์และสคริปต์ทุกเกมทำงานปกติ คัดลอกไปใช้ได้เลย", side: "ทุกแมพพร้อมใช้งาน", icon: "fa-shield-halved" },
@@ -302,21 +306,22 @@ function renderNews() {
   ui.news.hidden = !news.length;
   if (ui.sideNews) ui.sideNews.hidden = !news.length;
   if (!news.length) return;
-  const fresh = news.filter((n) => Date.now() - new Date(n.created_at).getTime() < NEWS_FRESH_MS);
-  if (ui.sideNewsCount) ui.sideNewsCount.textContent = fresh.length ? fmt(fresh.length) : "";
+  renderNewsDot();
   const shown = newsExpanded ? news : news.slice(0, NEWS_SHOWN);
   ui.newsList.innerHTML = shown
     .map((n) => {
       const tag = NEWS_TAGS[n.tag] ? n.tag : "update";
       const d = new Date(n.created_at);
       const isFresh = Date.now() - d.getTime() < NEWS_FRESH_MS;
-      return `<article class="news-item${n.pinned ? " pinned" : ""}" data-tag="${tag}">
+      const img = n.image ? safeImage(n.image) : "";
+      return `<article class="news-item${n.pinned ? " pinned" : ""}${img ? " has-img" : ""}" data-tag="${tag}">
         <div class="ni-date"><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString("th-TH", { month: "short" }))}</small></div>
         <div class="ni-body">
           <div class="ni-top"><span class="ni-tag">${NEWS_TAGS[tag]}</span>${n.pinned ? '<span class="ni-pin"><i class="fa-solid fa-thumbtack"></i>ปักหมุด</span>' : ""}${isFresh ? '<span class="ni-new">NEW</span>' : ""}<span class="ni-time">${esc(ago(n.created_at))}</span></div>
           <h3>${esc(n.title)}</h3>
           ${n.body ? `<p>${esc(n.body)}</p>` : ""}
         </div>
+        ${img ? `<button class="ni-img" type="button" data-zoom="${esc(img)}" aria-label="ดูรูปใหญ่"><img src="${esc(img)}" alt="" loading="lazy"><i class="fa-solid fa-expand"></i></button>` : ""}
       </article>`;
     })
     .join("");
@@ -327,13 +332,65 @@ function renderNews() {
   }
 }
 
+function newestNews() {
+  return news.reduce((m, n) => Math.max(m, new Date(n.created_at).getTime() || 0), 0);
+}
+
+function seenNews() {
+  try {
+    return Number(localStorage.getItem(NEWS_SEEN_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function renderNewsDot() {
+  if (!ui.sideNewsDot) return;
+  const latest = newestNews();
+  const seen = seenNews();
+  ui.sideNewsDot.hidden = !latest || latest <= seen || (!seen && Date.now() - latest > NEWS_FRESH_MS);
+}
+
+function markNewsSeen() {
+  const latest = newestNews();
+  if (!latest || latest <= seenNews()) return;
+  try {
+    localStorage.setItem(NEWS_SEEN_KEY, String(latest));
+  } catch {}
+  renderNewsDot();
+}
+
+function openLightbox(src, from) {
+  if (!ui.lightbox) return;
+  lightboxFocus = from || null;
+  ui.lightboxImg.src = src;
+  ui.lightbox.hidden = false;
+  ui.lightbox.focus();
+}
+
+function closeLightbox() {
+  if (!ui.lightbox || ui.lightbox.hidden) return false;
+  ui.lightbox.hidden = true;
+  ui.lightboxImg.removeAttribute("src");
+  if (lightboxFocus) lightboxFocus.focus();
+  return true;
+}
+
 async function loadNews() {
   try {
-    const r = await fetch(NEWS_URL, {
+    let r = await fetch(newsURL(newsImage), {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });
+    if (!r.ok && newsImage && r.status === 400) {
+      newsImage = false;
+      r = await fetch(newsURL(false), {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+    }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const body = await r.json();
     news = Array.isArray(body) ? body.filter((n) => n && n.title && n.created_at) : [];
@@ -636,6 +693,7 @@ ui.brand.addEventListener("click", (e) => {
 });
 addEventListener("popstate", syncFromURL);
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && closeLightbox()) return;
   if (e.key === "Escape" && openItem) return closeDrawer();
   if (e.key === "Tab" && openItem) {
     const f = [...ui.drawer.querySelectorAll("button, a[href]")].filter((x) => x.offsetParent);
@@ -659,6 +717,19 @@ if (ui.newsMore) {
     newsExpanded = !newsExpanded;
     renderNews();
   });
+}
+if (ui.newsList) {
+  ui.newsList.addEventListener("click", (e) => {
+    const z = e.target.closest("[data-zoom]");
+    if (z) openLightbox(z.dataset.zoom, z);
+  });
+}
+if (ui.lightbox) ui.lightbox.addEventListener("click", closeLightbox);
+if (ui.sideNews) ui.sideNews.addEventListener("click", markNewsSeen);
+if (ui.news && "IntersectionObserver" in window) {
+  new IntersectionObserver((entries) => {
+    if (entries.some((x) => x.isIntersecting)) markNewsSeen();
+  }, { threshold: 0.35 }).observe(ui.news);
 }
 
 setupEmbers();

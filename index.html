@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -50,7 +50,7 @@
       <a class="side-news" href="#news" id="sideNews" hidden>
         <i class="fa-solid fa-bullhorn"></i>
         <span>ประกาศอัปเดต</span>
-        <b id="sideNewsCount"></b>
+        <span class="side-news-dot" id="sideNewsDot" title="มีประกาศใหม่" hidden></span>
       </a>
 
       <div class="side-group side-stats">
@@ -158,7 +158,12 @@
     </div>
   </aside>
 
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="รูปประกาศ" tabindex="-1" hidden>
+    <img id="lightboxImg" alt="">
+    <button class="lightbox-close" type="button" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
