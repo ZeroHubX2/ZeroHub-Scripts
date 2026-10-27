@@ -1,8 +1,12 @@
 const SUPABASE_URL = "https://jfqiqcyzcsfjolkctgay.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWlxY3l6Y3Nmam9sa2N0Z2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzMxMDAsImV4cCI6MjEwODUwOTEwMH0.eka_J_CYoY3RilcVPPjuiTKWGSCGYdydD4AUJK2W6os";
-const DATA_URL = `${SUPABASE_URL}/rest/v1/scripts?select=id,name,description,image,script,maps,updated_at&order=sort_order.asc,id.asc`;
+const BASE_FIELDS = "id,name,description,image,script,maps,updated_at";
+const STATUS_FIELDS = "status,status_note,status_updated_at,check_url";
+const dataURL = (fields) => `${SUPABASE_URL}/rest/v1/scripts?select=${fields}&order=sort_order.asc,id.asc`;
+const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
 const REFRESH_MS = 5 * 60 * 1000;
-const SITE_UPDATED = "2026-10-27T12:14:00Z";
+const SCAN_MS = 60 * 1000;
+const SITE_UPDATED = "2026-10-27T12:27:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -15,6 +19,9 @@ const ui = {
   brand: $("brandHome"), backdrop: $("backdrop"), drawer: $("drawer"), dImage: $("drawerImage"),
   dTitle: $("drawerTitle"), dDesc: $("drawerDesc"), dMaps: $("drawerMaps"), code: $("codeBlock"),
   codeInfo: $("codeInfo"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
+  sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
+  sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbGrid: $("sbGrid"), sbTimer: $("sbTimer"), scan: $("scanButton"),
+  sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
 };
 
 let items = [];
@@ -26,6 +33,20 @@ let nextLoadAt = 0;
 let editedLabel = "";
 let lastFocus = null;
 let toastTimer;
+const hasStatusUI = !!(ui.sbHero && ui.sbGrid && ui.scan && ui.sideStatus && ui.dStatus);
+let statusFields = true;
+let scanning = false;
+let lastScan = 0;
+let nextScanAt = 0;
+const checks = new Map();
+
+const LEVEL = {
+  ok: { pill: "ONLINE", head: "ทุกระบบพร้อมลุย", sub: "โหลดเดอร์และสคริปต์ทุกเกมทำงานปกติ คัดลอกไปใช้ได้เลย", side: "ทุกระบบปกติ", icon: "fa-shield-halved" },
+  warn: { pill: "UPDATING", head: "บางระบบกำลังอัปเดต", sub: "บางเกมกำลังปรับปรุงหลังเกมอัปเดต ระหว่างนี้อาจใช้ได้ไม่ครบทุกฟีเจอร์", side: "มีระบบกำลังอัปเดต", icon: "fa-screwdriver-wrench" },
+  bad: { pill: "DOWN", head: "ตรวจพบระบบขัดข้อง", sub: "มีบางส่วนใช้งานไม่ได้ตอนนี้ ทีมงานกำลังเร่งแก้ ติดตามใน Discord", side: "มีระบบขัดข้อง", icon: "fa-triangle-exclamation" },
+  loading: { pill: "SCANNING", head: "กำลังสแกนระบบ...", sub: "ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์", side: "กำลังสแกน...", icon: "fa-satellite-dish" },
+};
+const MANUAL = { working: "ok", updating: "warn", down: "bad" };
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]);
@@ -132,6 +153,172 @@ function renderFilter() {
   ui.mapStat.textContent = fmt(counts.size);
 }
 
+function safeCheckURL(value) {
+  try {
+    const u = new URL(String(value || ""));
+    return u.protocol === "https:" && u.hostname === "raw.githubusercontent.com" ? u.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function liveLevel(url, slowMs) {
+  const c = checks.get(url);
+  if (!c) return "loading";
+  if (!c.last.ok) return "bad";
+  return c.last.ms > slowMs ? "warn" : "ok";
+}
+
+function components() {
+  const list = [{ key: LOADER_URL, item: null, level: liveLevel(LOADER_URL, 6000) }];
+  items.forEach((it) => {
+    const url = safeCheckURL(it.check_url);
+    if (!url) return;
+    const manual = MANUAL[it.status] || "ok";
+    const live = liveLevel(url, 8000);
+    list.push({ key: url, item: it, level: manual !== "ok" ? manual : live === "warn" ? "ok" : live });
+  });
+  return list;
+}
+
+function overallLevel(comps = components()) {
+  const levels = comps.map((c) => c.level);
+  if (levels.includes("bad")) return "bad";
+  if (levels.includes("warn")) return "warn";
+  if (levels.includes("loading")) return "loading";
+  return "ok";
+}
+
+function levelOf(it) {
+  const manual = MANUAL[it.status] || "ok";
+  if (manual !== "ok") return manual;
+  const url = safeCheckURL(it.check_url);
+  const live = url ? liveLevel(url, 8000) : liveLevel(LOADER_URL, 6000);
+  return live === "warn" ? "ok" : live;
+}
+
+const pill = (level) => `<span class="pill" data-level="${level}">${LEVEL[level].pill}</span>`;
+
+function ago(ts) {
+  const s = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
+  if (!isFinite(s)) return "-";
+  if (s < 60) return "เมื่อสักครู่";
+  if (s < 3600) return `${Math.floor(s / 60)} นาทีที่แล้ว`;
+  if (s < 86400) return `${Math.floor(s / 3600)} ชม.ที่แล้ว`;
+  return `${Math.floor(s / 86400)} วันที่แล้ว`;
+}
+
+const clock = (ts) => new Date(ts).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+function cardHTML(comp) {
+  const c = checks.get(comp.key);
+  const last = c && c.last;
+  const hist = c ? c.hist : [];
+  const okRate = hist.length ? Math.round((hist.filter((h) => h.ok).length / hist.length) * 100) : null;
+  const maxMs = Math.max(400, ...hist.filter((h) => h.ok).map((h) => h.ms));
+  const slow = comp.item ? 8000 : 6000;
+  const bars = Array.from({ length: 24 }, (_, i) => hist[hist.length - 24 + i]).map((h) =>
+    !h ? '<span class="empty"></span>' : !h.ok ? '<span class="fail"></span>' : `<span class="${h.ms > slow ? "slow" : ""}" style="height:${Math.max(14, Math.round((h.ms / maxMs) * 100))}%"></span>`
+  );
+  const it = comp.item;
+  const icon = it
+    ? `<img class="sc-icon" src="${esc(safeImage(it.image))}" alt="">`
+    : '<span class="sc-icon"><i class="fa-solid fa-server"></i></span>';
+  const third = it
+    ? `<div><small>ไฟล์</small><b>${last && last.ok && last.size ? `${fmt(Math.round(last.size / 1024))}KB` : "-"}</b></div>`
+    : `<div><small>เช็กแล้ว</small><b>${fmt(hist.length)}</b></div>`;
+  const note = it && it.status_note ? `<p class="sc-note">${esc(it.status_note)}</p>` : "";
+  const foot = it && it.status_updated_at && it.status && it.status !== "working"
+    ? `ตั้งสถานะเมื่อ ${ago(it.status_updated_at)}`
+    : last ? `เช็กล่าสุด ${clock(last.at)}` : "รอสแกนรอบแรก";
+  return `<article class="sc" data-level="${comp.level}">
+    <div class="sc-top">${icon}<div class="sc-name"><b title="${esc(it ? it.name : "ZeroHub Loader API")}">${esc(it ? it.name : "ZeroHub Loader API")}</b><span class="sc-sub">${pill(comp.level)}<small>${it ? "สคริปต์เกม" : "เซิร์ฟเวอร์โหลดเดอร์"}</small></span></div></div>
+    <div class="sc-metrics"><div><small>Ping</small><b>${last && last.ok ? `${fmt(last.ms)}ms` : "-"}</b></div><div><small>สำเร็จ</small><b>${okRate === null ? "-" : `${okRate}%`}</b></div>${third}</div>
+    <div class="spark" title="ผลเช็ก 24 ครั้งล่าสุด">${bars.join("")}</div>
+    ${note}<span class="sc-foot">${foot}</span>
+  </article>`;
+}
+
+function renderStatus() {
+  if (!hasStatusUI) return;
+  const comps = components();
+  const lv = items.length ? overallLevel(comps) : "loading";
+  const info = LEVEL[lv];
+  ui.sbHero.dataset.level = lv;
+  ui.sideStatus.dataset.level = lv;
+  ui.sbTitle.textContent = info.head;
+  ui.sbSub.textContent = info.sub;
+  ui.sbIcon.className = `fa-solid ${info.icon}`;
+  ui.sideStatusText.textContent = info.side;
+  ui.sbOk.textContent = comps.filter((c) => c.level === "ok").length;
+  ui.sbWarn.textContent = comps.filter((c) => c.level === "warn").length;
+  ui.sbBad.textContent = comps.filter((c) => c.level === "bad").length;
+  ui.sbGrid.innerHTML = comps.map(cardHTML).join("");
+  ui.sbGrid.querySelectorAll("img.sc-icon").forEach((img) => img.addEventListener("error", () => (img.src = FALLBACK_IMAGE), { once: true }));
+  renderScanTimer();
+}
+
+function renderScanTimer() {
+  if (!hasStatusUI) return;
+  if (scanning) {
+    ui.sbTimer.textContent = "กำลังสแกน...";
+    return;
+  }
+  if (!lastScan) {
+    ui.sbTimer.textContent = "รอสแกนรอบแรก";
+    return;
+  }
+  const left = Math.max(0, Math.ceil((nextScanAt - Date.now()) / 1000));
+  ui.sbTimer.textContent = `สแกนล่าสุด ${clock(lastScan)} · ${document.hidden ? "พักสแกน" : `รอบถัดไป ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`}`;
+}
+
+function renderDrawerStatus(it) {
+  if (!hasStatusUI) return;
+  const lv = levelOf(it);
+  const when = it.status && it.status !== "working" && it.status_updated_at ? `ตั้งสถานะเมื่อ ${ago(it.status_updated_at)}` : lastScan ? `สแกนล่าสุด ${clock(lastScan)}` : "";
+  ui.dStatus.innerHTML = `${pill(lv)}<span>${esc(when)}</span>${it.status_note ? `<p class="sc-note">${esc(it.status_note)}</p>` : ""}`;
+  ui.dStatus.dataset.level = lv;
+}
+
+async function probe(url, opts) {
+  const t = performance.now();
+  try {
+    const r = await fetch(url, { ...opts, cache: "no-store", signal: AbortSignal.timeout(25000) });
+    return { ok: r.type === "opaque" || r.ok, ms: Math.round(performance.now() - t), size: Number(r.headers.get("content-length")) || 0, at: Date.now() };
+  } catch {
+    return { ok: false, ms: Math.round(performance.now() - t), size: 0, at: Date.now() };
+  }
+}
+
+function record(url, res) {
+  const c = checks.get(url) || { hist: [] };
+  c.hist.push(res);
+  if (c.hist.length > 24) c.hist.shift();
+  c.last = res;
+  checks.set(url, c);
+}
+
+async function scan() {
+  if (!hasStatusUI || scanning || !items.length) return;
+  scanning = true;
+  nextScanAt = Date.now() + SCAN_MS;
+  ui.scan.disabled = true;
+  ui.scan.classList.add("spin");
+  renderScanTimer();
+  const urls = [...new Set(items.map((it) => safeCheckURL(it.check_url)).filter(Boolean))];
+  await Promise.all([
+    probe(LOADER_URL, { mode: "no-cors" }).then((r) => record(LOADER_URL, r)),
+    ...urls.map((u) => probe(u, { method: "HEAD" }).then((r) => record(u, r))),
+  ]);
+  lastScan = Date.now();
+  scanning = false;
+  ui.scan.disabled = false;
+  ui.scan.classList.remove("spin");
+  renderStatus();
+  renderList();
+  if (openItem) renderDrawerStatus(openItem);
+}
+
 function renderList() {
   ui.clear.hidden = !ui.search.value;
   const list = items.filter(matches);
@@ -154,7 +341,7 @@ function renderList() {
     ? `<article class="feature" data-open="${Number(top.id)}">
         <div class="feature-img"><span class="ribbon">แนะนำ</span><img src="${esc(safeImage(top.image))}" alt=""></div>
         <div class="feature-info">
-          <h3>${esc(top.name || "ไม่มีชื่อ")}</h3>
+          <h3>${esc(top.name || "ไม่มีชื่อ")}${pill(levelOf(top))}</h3>
           <p>${esc(top.description || "")}</p>
           ${chipsHTML(top, 6)}
           <div class="feature-actions">
@@ -168,7 +355,7 @@ function renderList() {
     .map(
       (it) => `<article class="row" data-open="${Number(it.id)}">
         <img class="row-icon" src="${esc(safeImage(it.image))}" alt="" loading="lazy">
-        <div class="row-info"><h3>${esc(it.name || "ไม่มีชื่อ")}</h3><p>${esc(it.description || "")}</p>${chipsHTML(it)}</div>
+        <div class="row-info"><h3>${esc(it.name || "ไม่มีชื่อ")}${pill(levelOf(it))}</h3><p>${esc(it.description || "")}</p>${chipsHTML(it)}</div>
         <div class="row-actions">
           <button class="z-btn z-red" type="button" data-copy="${Number(it.id)}"><i class="fa-regular fa-copy"></i><span>คัดลอก</span></button>
           <button class="z-btn" type="button" data-open="${Number(it.id)}" aria-label="ดูโค้ด ${esc(it.name || "")}"><i class="fa-solid fa-terminal"></i><span>โค้ด</span></button>
@@ -213,6 +400,7 @@ function skeleton() {
 }
 
 function fillDrawer(it) {
+  renderDrawerStatus(it);
   ui.dTitle.textContent = it.name || "ไม่มีชื่อ";
   ui.dDesc.textContent = it.description || "";
   ui.dDesc.hidden = !it.description;
@@ -288,12 +476,19 @@ async function load(showSkeleton) {
   ui.refresh.disabled = true;
   ui.refresh.classList.add("spin");
   try {
-    const r = await fetch(DATA_URL, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
-    const body = await r.json().catch(() => null);
+    const get = (fields) =>
+      fetch(dataURL(fields), {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+    let r = await get(statusFields ? `${BASE_FIELDS},${STATUS_FIELDS}` : BASE_FIELDS);
+    let body = await r.json().catch(() => null);
+    if (!r.ok && statusFields && body && body.code === "42703") {
+      statusFields = false;
+      r = await get(BASE_FIELDS);
+      body = await r.json().catch(() => null);
+    }
     if (!r.ok) {
       const err = new Error((body && body.message) || `HTTP ${r.status}`);
       err.code = body && body.code;
@@ -301,10 +496,15 @@ async function load(showSkeleton) {
     }
     items = Array.isArray(body) ? body : [];
     lastLoad = Date.now();
-    const dbLatest = items.reduce((m, it) => (it.updated_at > m ? it.updated_at : m), "");
+    const dbLatest = items.reduce((m, it) => {
+      const t = [it.updated_at, it.status_updated_at].filter(Boolean).sort().pop() || "";
+      return t > m ? t : m;
+    }, "");
     renderMeta(new Date(dbLatest || 0) > new Date(SITE_UPDATED) ? dbLatest : SITE_UPDATED);
     renderFilter();
     renderList();
+    renderStatus();
+    if (!lastScan && !scanning) scan();
     if (openItem) {
       const fresh = byId(openItem.id);
       if (fresh) {
@@ -428,9 +628,13 @@ document.addEventListener("keydown", (e) => {
     ui.search.focus();
   }
 });
+if (hasStatusUI) ui.scan.addEventListener("click", scan);
+
 setupEmbers();
 load(true);
 setInterval(() => {
   if (!document.hidden && !loading && Date.now() >= nextLoadAt) load(false);
   else renderClock();
+  if (!document.hidden && !scanning && lastScan && Date.now() >= nextScanAt) scan();
+  else renderScanTimer();
 }, 1000);

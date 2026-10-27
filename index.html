@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -40,6 +40,12 @@
         <div class="side-label"><i class="fa-solid fa-gamepad"></i>กรองตามเกม</div>
         <div class="map-filter" id="mapFilter" role="tablist" aria-label="กรองตามเกม"></div>
       </div>
+
+      <a class="side-status" href="#status" id="sideStatus" data-level="loading">
+        <span class="ss-dot"></span>
+        <span class="ss-text"><small>SYSTEM STATUS</small><b id="sideStatusText">กำลังสแกน...</b></span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </a>
 
       <div class="side-group side-stats">
         <div class="side-label"><i class="fa-solid fa-chart-simple"></i>ภาพรวม</div>
@@ -71,6 +77,27 @@
         </div>
       </section>
 
+      <section class="status-board" id="status" aria-labelledby="statusTitle">
+        <div class="sb-hero" id="sbHero" data-level="loading">
+          <div class="radar" aria-hidden="true"><span class="ring"></span><span class="ring"></span><span class="ring"></span><span class="sweep"></span><i class="fa-solid fa-satellite-dish" id="sbIcon"></i></div>
+          <div class="sb-main">
+            <span class="sb-kicker"><span class="rec"></span>SYSTEM STATUS · LIVE</span>
+            <h2 id="statusTitle">กำลังสแกนระบบ...</h2>
+            <p id="sbSub">ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์</p>
+          </div>
+          <div class="sb-side">
+            <div class="sb-counts">
+              <div class="sbc ok"><b id="sbOk">-</b><span>พร้อมใช้</span></div>
+              <div class="sbc warn"><b id="sbWarn">-</b><span>อัปเดต</span></div>
+              <div class="sbc bad"><b id="sbBad">-</b><span>ล่ม</span></div>
+            </div>
+            <button class="z-btn" type="button" id="scanButton"><i class="fa-solid fa-satellite-dish"></i><span>สแกนเดี๋ยวนี้</span></button>
+            <small class="sb-timer" id="sbTimer">-</small>
+          </div>
+        </div>
+        <div class="sb-grid" id="sbGrid" aria-live="polite"></div>
+      </section>
+
       <section class="arsenal" id="arsenal" aria-labelledby="arsenalTitle">
         <div class="arsenal-head">
           <h2 id="arsenalTitle"><i class="fa-solid fa-layer-group"></i>คลังสคริปต์</h2>
@@ -98,6 +125,7 @@
       <button class="icon-btn" type="button" id="closeDrawer" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="drawer-body">
+      <div class="drawer-status" id="drawerStatus"></div>
       <p class="drawer-desc" id="drawerDesc"></p>
       <div class="drawer-section">
         <div class="ds-label"><i class="fa-solid fa-gamepad"></i>ใช้ได้กับเกม</div>
@@ -117,6 +145,6 @@
   </aside>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
