@@ -6,12 +6,11 @@ const dataURL = (fields) => `${SUPABASE_URL}/rest/v1/scripts?select=${fields}&or
 const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
 const newsURL = (img) => `${SUPABASE_URL}/rest/v1/announcements?select=id,title,body,tag,pinned,created_at${img ? ",image" : ""}&order=pinned.desc,created_at.desc&limit=30`;
 const NEWS_SEEN_KEY = "zh_news_seen";
-const NEWS_SHOWN = 4;
 const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-28T15:55:00Z";
+const SITE_UPDATED = "2026-10-28T16:20:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -27,7 +26,7 @@ const ui = {
   sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
   sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbTimer: $("sbTimer"), scan: $("scanButton"),
   sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
-  news: $("news"), newsList: $("newsList"), newsMore: $("newsMore"), sideNews: $("sideNews"), sideNewsDot: $("sideNewsDot"),
+  news: $("news"), newsList: $("newsList"), sideNews: $("sideNews"), sideNewsDot: $("sideNewsDot"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"),
 };
 
@@ -47,7 +46,6 @@ let lastScan = 0;
 let nextScanAt = 0;
 const checks = new Map();
 let news = [];
-let newsExpanded = false;
 let newsImage = true;
 let lightboxFocus = null;
 
@@ -307,12 +305,12 @@ function renderNews() {
   if (ui.sideNews) ui.sideNews.hidden = !news.length;
   if (!news.length) return;
   renderNewsDot();
-  const shown = newsExpanded ? news : news.slice(0, NEWS_SHOWN);
-  ui.newsList.innerHTML = shown
+  const latest = newestNews();
+  ui.newsList.innerHTML = news
     .map((n) => {
       const tag = NEWS_TAGS[n.tag] ? n.tag : "update";
       const d = new Date(n.created_at);
-      const isFresh = Date.now() - d.getTime() < NEWS_FRESH_MS;
+      const isFresh = d.getTime() === latest && Date.now() - latest < NEWS_FRESH_MS;
       const img = n.image ? safeImage(n.image) : "";
       return `<article class="news-item${n.pinned ? " pinned" : ""}${img ? " has-img" : ""}" data-tag="${tag}">
         <div class="ni-date"><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString("th-TH", { month: "short" }))}</small></div>
@@ -325,11 +323,6 @@ function renderNews() {
       </article>`;
     })
     .join("");
-  if (ui.newsMore) {
-    ui.newsMore.hidden = news.length <= NEWS_SHOWN;
-    ui.newsMore.querySelector("i").className = `fa-solid fa-chevron-${newsExpanded ? "up" : "down"}`;
-    ui.newsMore.querySelector("span").textContent = newsExpanded ? "ย่อประกาศ" : `ดูประกาศทั้งหมด (${fmt(news.length)})`;
-  }
 }
 
 function newestNews() {
@@ -712,12 +705,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 if (hasStatusUI) ui.scan.addEventListener("click", scan);
-if (ui.newsMore) {
-  ui.newsMore.addEventListener("click", () => {
-    newsExpanded = !newsExpanded;
-    renderNews();
-  });
-}
 if (ui.newsList) {
   ui.newsList.addEventListener("click", (e) => {
     const z = e.target.closest("[data-zoom]");
