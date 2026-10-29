@@ -10,7 +10,7 @@ const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-28T16:20:00Z";
+const SITE_UPDATED = "2026-10-29T09:05:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -37,6 +37,7 @@ let loading = false;
 let lastLoad = 0;
 let nextLoadAt = 0;
 let editedLabel = "";
+let scriptsLatest = "";
 let lastFocus = null;
 let toastTimer;
 const hasStatusUI = !!(ui.sbHero && ui.scan && ui.sideStatus && ui.dStatus);
@@ -390,6 +391,7 @@ async function loadNews() {
   } catch {
     if (!news.length) news = [];
   }
+  if (items.length) refreshMeta();
   renderNews();
 }
 
@@ -438,6 +440,11 @@ function renderList() {
     )
     .join("");
   document.querySelectorAll(".row-icon, .feature-img img").forEach((img) => img.addEventListener("error", () => (img.src = FALLBACK_IMAGE), { once: true }));
+}
+
+function refreshMeta() {
+  const t = Math.max(new Date(scriptsLatest || 0).getTime() || 0, new Date(SITE_UPDATED).getTime(), newestNews());
+  renderMeta(new Date(t).toISOString());
 }
 
 function renderMeta(updatedAt) {
@@ -574,7 +581,8 @@ async function load(showSkeleton) {
       const t = [it.updated_at, it.status_updated_at].filter(Boolean).sort().pop() || "";
       return t > m ? t : m;
     }, "");
-    renderMeta(new Date(dbLatest || 0) > new Date(SITE_UPDATED) ? dbLatest : SITE_UPDATED);
+    scriptsLatest = dbLatest;
+    refreshMeta();
     renderFilter();
     renderList();
     renderStatus();
