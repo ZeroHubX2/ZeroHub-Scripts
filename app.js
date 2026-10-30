@@ -10,7 +10,7 @@ const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-29T09:05:00Z";
+const SITE_UPDATED = "2026-10-30T17:23:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -57,6 +57,14 @@ const LEVEL = {
   loading: { pill: "SCANNING", head: "กำลังสแกนระบบ...", sub: "ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์", side: "กำลังสแกน...", icon: "fa-satellite-dish" },
 };
 const MANUAL = { working: "ok", updating: "warn", down: "bad" };
+
+function timeoutSignal(ms) {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  if (typeof AbortController === "undefined") return undefined;
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]);
@@ -264,7 +272,7 @@ function renderDrawerStatus(it) {
 async function probe(url, opts) {
   const t = performance.now();
   try {
-    const r = await fetch(url, { ...opts, cache: "no-store", signal: AbortSignal.timeout(25000) });
+    const r = await fetch(url, { ...opts, cache: "no-store", signal: timeoutSignal(25000) });
     return { ok: r.type === "opaque" || r.ok, ms: Math.round(performance.now() - t), size: Number(r.headers.get("content-length")) || 0, at: Date.now() };
   } catch {
     return { ok: false, ms: Math.round(performance.now() - t), size: 0, at: Date.now() };
@@ -375,14 +383,14 @@ async function loadNews() {
     let r = await fetch(newsURL(newsImage), {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
       cache: "no-store",
-      signal: AbortSignal.timeout(10000),
+      signal: timeoutSignal(15000),
     });
     if (!r.ok && newsImage && r.status === 400) {
       newsImage = false;
       r = await fetch(newsURL(false), {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
         cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+        signal: timeoutSignal(15000),
       });
     }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -561,7 +569,7 @@ async function load(showSkeleton) {
       fetch(dataURL(fields), {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
         cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+        signal: timeoutSignal(15000),
       });
     let r = await get(statusFields ? `${BASE_FIELDS},${STATUS_FIELDS}` : BASE_FIELDS);
     let body = await r.json().catch(() => null);
