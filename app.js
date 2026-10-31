@@ -4,13 +4,14 @@ const BASE_FIELDS = "id,name,description,image,script,maps,updated_at";
 const STATUS_FIELDS = "status,status_note,status_updated_at,check_url";
 const dataURL = (fields) => `${SUPABASE_URL}/rest/v1/scripts?select=${fields}&order=sort_order.asc,id.asc`;
 const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
+const CONFIG_LINE = 'getgenv().ZeroHub = { AutoRejoin = "Y", AutoLoad = "Y" }';
 const newsURL = (img) => `${SUPABASE_URL}/rest/v1/announcements?select=id,title,body,tag,pinned,created_at${img ? ",image" : ""}&order=pinned.desc,created_at.desc&limit=30`;
 const NEWS_SEEN_KEY = "zh_news_seen";
 const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = { new: "ใหม่", update: "อัปเดต", fix: "แก้บั๊ก", event: "กิจกรรม" };
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-10-31T07:00:00Z";
+const SITE_UPDATED = "2026-10-31T11:31:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -22,7 +23,7 @@ const ui = {
   featured: $("featured"), rows: $("rows"), lastUpdate: $("lastUpdateText"), quickCopy: $("quickCopy"),
   brand: $("brandHome"), backdrop: $("backdrop"), drawer: $("drawer"), dImage: $("drawerImage"),
   dTitle: $("drawerTitle"), dDesc: $("drawerDesc"), dMaps: $("drawerMaps"), code: $("codeBlock"),
-  codeInfo: $("codeInfo"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
+  codeInfo: $("codeInfo"), dOpts: $("drawerOpts"), configBlock: $("configBlock"), copyConfig: $("copyConfig"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
   sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
   sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbTimer: $("sbTimer"), scan: $("scanButton"),
   sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
@@ -121,6 +122,11 @@ async function copyText(text) {
     t.remove();
     return ok;
   }
+}
+
+function configOf(it) {
+  const code = String((it && it.script) || "");
+  return code.includes(LOADER_URL) && !code.includes("getgenv().ZeroHub") ? `${CONFIG_LINE}\n${code}` : "";
 }
 
 async function copyScript(it, btn) {
@@ -506,6 +512,11 @@ function fillDrawer(it) {
     })
   );
   ui.codeInfo.textContent = `${fmt(lines.length)} บรรทัด · ${fmt(code.length)} ตัวอักษร`;
+  if (ui.dOpts) {
+    const config = configOf(it);
+    ui.dOpts.hidden = !config;
+    if (config) ui.configBlock.replaceChildren(...config.split("\n").map((line) => Object.assign(document.createElement("span"), { className: "ln", textContent: line })));
+  }
   const games = gamesOf(it);
   ui.dMaps.innerHTML = games.length
     ? games
@@ -689,6 +700,7 @@ ui.quickCopy.addEventListener("click", () => {
   copyScript(items[0], ui.quickCopy);
 });
 ui.copy.addEventListener("click", () => copyScript(openItem, ui.copy));
+if (ui.copyConfig) ui.copyConfig.addEventListener("click", () => openItem && copyScript({ name: `${openItem.name} แบบคอนฟิก`, script: configOf(openItem) }, ui.copyConfig));
 ui.close.addEventListener("click", closeDrawer);
 ui.backdrop.addEventListener("click", closeDrawer);
 ui.brand.addEventListener("click", (e) => {

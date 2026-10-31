@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -147,15 +147,27 @@
         <div class="game-links" id="drawerMaps"></div>
       </div>
       <div class="drawer-section">
-        <div class="ds-label"><i class="fa-solid fa-terminal"></i>โค้ด <span class="ds-info" id="codeInfo"></span></div>
+        <div class="ds-label"><i class="fa-solid fa-terminal"></i>แบบธรรมดา <span class="ds-info" id="codeInfo"></span></div>
         <div class="terminal">
           <span class="term-tag">LUA</span>
           <pre class="term-code" id="codeBlock"></pre>
         </div>
       </div>
+      <div class="drawer-section" id="drawerOpts" hidden>
+        <div class="ds-label"><i class="fa-solid fa-sliders"></i>แบบคอนฟิก <span class="ds-info">"Y" = เปิด</span></div>
+        <div class="terminal">
+          <span class="term-tag">LUA</span>
+          <pre class="term-code" id="configBlock"></pre>
+        </div>
+        <div class="opt-list">
+          <div class="opt"><code>AutoRejoin</code><p>เซิร์ฟรีหรือเน็ตหลุด สคริปต์จะพากลับเข้าเกมให้อัตโนมัติ</p></div>
+          <div class="opt"><code>AutoLoad</code><p>เซิร์ฟรี เน็ตหลุด หรือ AutoRejoin ย้ายเซิร์ฟ สคริปต์จะรันตัวเองใหม่ให้อัตโนมัติ</p></div>
+        </div>
+        <button class="z-btn z-full opt-copy" type="button" id="copyConfig"><i class="fa-solid fa-sliders"></i><span>คัดลอกแบบคอนฟิก</span></button>
+      </div>
     </div>
     <div class="drawer-foot">
-      <button class="z-btn z-red z-lg z-full" type="button" id="copyButton"><i class="fa-regular fa-copy"></i><span>คัดลอกโค้ดนี้</span></button>
+      <button class="z-btn z-red z-lg z-full" type="button" id="copyButton"><i class="fa-regular fa-copy"></i><span>คัดลอกแบบธรรมดา</span></button>
     </div>
   </aside>
 
@@ -165,6 +177,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
