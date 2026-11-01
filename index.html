@@ -17,28 +17,34 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
 
   <div class="shell">
-    <aside class="side" aria-label="เครื่องมือค้นหาและกรอง">
-      <a class="side-brand" href="./" id="brandHome">
-        <img src="img/logo-sm.webp" alt="">
-        <span><b>ZERO<em>HUB</em></b><small>SCRIPT &amp; TOOLS</small></span>
-      </a>
+    <aside class="side" aria-label="เครื่องมือค้นหาและกรอง" data-i18n-aria="side_aria">
+      <div class="side-top">
+        <a class="side-brand" href="./" id="brandHome">
+          <img src="img/logo-sm.webp" alt="">
+          <span><b>ZERO<em>HUB</em></b><small>SCRIPT &amp; TOOLS</small></span>
+        </a>
+        <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+          <button type="button" data-lang="th" aria-pressed="true">TH</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
 
       <label class="side-search">
         <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-        <input id="searchInput" type="search" placeholder="พิมพ์ชื่อสคริปต์หรือเกม" autocomplete="off" aria-label="ค้นหาสคริปต์">
+        <input id="searchInput" type="search" placeholder="พิมพ์ชื่อสคริปต์หรือเกม" autocomplete="off" aria-label="ค้นหาสคริปต์" data-i18n-ph="search_ph" data-i18n-aria="search_aria">
         <kbd>/</kbd>
-        <button type="button" id="clearSearch" class="clear-btn" aria-label="ล้างคำค้นหา" hidden><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" id="clearSearch" class="clear-btn" aria-label="ล้างคำค้นหา" data-i18n-aria="clear_aria" hidden><i class="fa-solid fa-xmark"></i></button>
       </label>
 
       <div class="side-group">
-        <div class="side-label"><i class="fa-solid fa-gamepad"></i>กรองตามเกม</div>
-        <div class="map-filter" id="mapFilter" role="tablist" aria-label="กรองตามเกม"></div>
+        <div class="side-label"><i class="fa-solid fa-gamepad"></i><span data-i18n="filter_label">กรองตามเกม</span></div>
+        <div class="map-filter" id="mapFilter" role="tablist" aria-label="กรองตามเกม" data-i18n-aria="filter_label"></div>
       </div>
 
       <a class="side-status" href="#status" id="sideStatus" data-level="loading">
@@ -49,20 +55,20 @@
 
       <a class="side-news" href="#news" id="sideNews" hidden>
         <i class="fa-solid fa-bullhorn"></i>
-        <span>ประกาศอัปเดต</span>
-        <span class="side-news-dot" id="sideNewsDot" title="มีประกาศใหม่" hidden></span>
+        <span data-i18n="news_label">ประกาศอัปเดต</span>
+        <span class="side-news-dot" id="sideNewsDot" title="มีประกาศใหม่" data-i18n-title="news_dot" hidden></span>
       </a>
 
       <div class="side-group side-stats">
-        <div class="side-label"><i class="fa-solid fa-chart-simple"></i>ภาพรวม</div>
-        <div class="srow"><span>สคริปต์</span><b id="scriptStat">-</b></div>
-        <div class="srow"><span>เกมที่รองรับ</span><b id="mapStat">-</b></div>
-        <div class="srow"><span>แก้ไขล่าสุด</span><b id="updatedStat">-</b></div>
+        <div class="side-label"><i class="fa-solid fa-chart-simple"></i><span data-i18n="overview">ภาพรวม</span></div>
+        <div class="srow"><span data-i18n="stat_scripts">สคริปต์</span><b id="scriptStat">-</b></div>
+        <div class="srow"><span data-i18n="stat_games">เกมที่รองรับ</span><b id="mapStat">-</b></div>
+        <div class="srow"><span data-i18n="stat_updated">แก้ไขล่าสุด</span><b id="updatedStat">-</b></div>
       </div>
 
       <div class="side-actions">
         <a class="z-btn z-red" href="https://discord.gg/CYxyhhBNba" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-discord"></i>Discord ZeroHub</a>
-        <button class="z-btn" type="button" id="refreshButton"><i class="fa-solid fa-arrows-rotate"></i>ดึงข้อมูลใหม่</button>
+        <button class="z-btn" type="button" id="refreshButton"><i class="fa-solid fa-arrows-rotate"></i><span data-i18n="refresh">ดึงข้อมูลใหม่</span></button>
       </div>
     </aside>
 
@@ -70,11 +76,11 @@
       <section class="banner" aria-labelledby="bannerTitle">
         <div class="banner-text">
           <span class="tagline"><span class="live"></span>FREE · NO KEY · ONE LOADER</span>
-          <h1 id="bannerTitle"><span class="big">ZERO</span><span class="big red">HUB</span><span class="sub">โหลดเดอร์ตัวเดียว ครบทุกเกม</span></h1>
-          <p>ไม่ต้องจำหลายลิงก์ กดคัดลอกครั้งเดียว ระบบเช็กเกมที่คุณเล่นแล้วเปิดสคริปต์ที่ใช่ให้เอง</p>
+          <h1 id="bannerTitle"><span class="big">ZERO</span><span class="big red">HUB</span><span class="sub" data-i18n="banner_sub">โหลดเดอร์ตัวเดียว ครบทุกเกม</span></h1>
+          <p data-i18n="banner_p">ไม่ต้องจำหลายลิงก์ กดคัดลอกครั้งเดียว ระบบเช็กเกมที่คุณเล่นแล้วเปิดสคริปต์ที่ใช่ให้เอง</p>
           <div class="banner-actions">
-            <button class="z-btn z-red z-lg" type="button" id="quickCopy"><i class="fa-solid fa-bolt"></i><span>คัดลอกโหลดเดอร์</span></button>
-            <a class="z-btn z-lg" href="#arsenal"><i class="fa-solid fa-list"></i>ดูทั้งหมด</a>
+            <button class="z-btn z-red z-lg" type="button" id="quickCopy"><i class="fa-solid fa-bolt"></i><span data-i18n="quick_copy">คัดลอกโหลดเดอร์</span></button>
+            <a class="z-btn z-lg" href="#arsenal"><i class="fa-solid fa-list"></i><span data-i18n="view_all">ดูทั้งหมด</span></a>
           </div>
         </div>
         <div class="banner-art" aria-hidden="true">
@@ -93,11 +99,11 @@
           </div>
           <div class="sb-side">
             <div class="sb-counts">
-              <div class="sbc ok"><b id="sbOk">-</b><span>พร้อมใช้</span></div>
-              <div class="sbc warn"><b id="sbWarn">-</b><span>อัปเดต</span></div>
-              <div class="sbc bad"><b id="sbBad">-</b><span>ล่ม</span></div>
+              <div class="sbc ok"><b id="sbOk">-</b><span data-i18n="cnt_ok">พร้อมใช้</span></div>
+              <div class="sbc warn"><b id="sbWarn">-</b><span data-i18n="cnt_warn">อัปเดต</span></div>
+              <div class="sbc bad"><b id="sbBad">-</b><span data-i18n="cnt_bad">ล่ม</span></div>
             </div>
-            <button class="z-btn" type="button" id="scanButton"><i class="fa-solid fa-satellite-dish"></i><span>สแกนเดี๋ยวนี้</span></button>
+            <button class="z-btn" type="button" id="scanButton"><i class="fa-solid fa-satellite-dish"></i><span data-i18n="scan_now">สแกนเดี๋ยวนี้</span></button>
             <small class="sb-timer" id="sbTimer">-</small>
           </div>
         </div>
@@ -105,7 +111,7 @@
 
       <section class="news" id="news" aria-labelledby="newsTitle" hidden>
         <div class="news-head">
-          <h2 id="newsTitle"><i class="fa-solid fa-bullhorn"></i>ประกาศอัปเดต</h2>
+          <h2 id="newsTitle"><i class="fa-solid fa-bullhorn"></i><span data-i18n="news_label">ประกาศอัปเดต</span></h2>
           <span class="news-tag-line">UPDATE LOG</span>
         </div>
         <div class="news-scroll">
@@ -115,7 +121,7 @@
 
       <section class="arsenal" id="arsenal" aria-labelledby="arsenalTitle">
         <div class="arsenal-head">
-          <h2 id="arsenalTitle"><i class="fa-solid fa-layer-group"></i>คลังสคริปต์</h2>
+          <h2 id="arsenalTitle"><i class="fa-solid fa-layer-group"></i><span data-i18n="arsenal">คลังสคริปต์</span></h2>
           <span class="count" id="resultsText" aria-live="polite">กำลังดึงข้อมูล...</span>
         </div>
         <div id="featured"></div>
@@ -137,46 +143,46 @@
         <span class="drawer-kicker">ZEROHUB SCRIPT</span>
         <h2 id="drawerTitle">สคริปต์</h2>
       </div>
-      <button class="icon-btn" type="button" id="closeDrawer" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+      <button class="icon-btn" type="button" id="closeDrawer" aria-label="ปิด" data-i18n-aria="close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="drawer-body">
       <div class="drawer-status" id="drawerStatus"></div>
       <p class="drawer-desc" id="drawerDesc"></p>
       <div class="drawer-section">
-        <div class="ds-label"><i class="fa-solid fa-gamepad"></i>ใช้ได้กับเกม</div>
+        <div class="ds-label"><i class="fa-solid fa-gamepad"></i><span data-i18n="works_with">ใช้ได้กับเกม</span></div>
         <div class="game-links" id="drawerMaps"></div>
       </div>
       <div class="drawer-section">
-        <div class="ds-label"><i class="fa-solid fa-terminal"></i>แบบธรรมดา <span class="ds-info" id="codeInfo"></span></div>
+        <div class="ds-label"><i class="fa-solid fa-terminal"></i><span data-i18n="plain">แบบธรรมดา</span> <span class="ds-info" id="codeInfo"></span></div>
         <div class="terminal">
           <span class="term-tag">LUA</span>
           <pre class="term-code" id="codeBlock"></pre>
         </div>
       </div>
       <div class="drawer-section" id="drawerOpts" hidden>
-        <div class="ds-label"><i class="fa-solid fa-sliders"></i>แบบคอนฟิก <span class="ds-info">"Y" = เปิด</span></div>
+        <div class="ds-label"><i class="fa-solid fa-sliders"></i><span data-i18n="config">แบบคอนฟิก</span> <span class="ds-info" data-i18n="y_on">"Y" = เปิด</span></div>
         <div class="terminal">
           <span class="term-tag">LUA</span>
           <pre class="term-code" id="configBlock"></pre>
         </div>
         <div class="opt-list">
-          <div class="opt"><code>AutoRejoin</code><p>เซิร์ฟรีหรือเน็ตหลุด สคริปต์จะพากลับเข้าเกมให้อัตโนมัติ</p></div>
-          <div class="opt"><code>AutoLoad</code><p>เซิร์ฟรี เน็ตหลุด หรือ AutoRejoin ย้ายเซิร์ฟ สคริปต์จะรันตัวเองใหม่ให้อัตโนมัติ</p></div>
+          <div class="opt"><code>AutoRejoin</code><p data-i18n="opt_rejoin">เซิร์ฟรีหรือเน็ตหลุด สคริปต์จะพากลับเข้าเกมให้อัตโนมัติ</p></div>
+          <div class="opt"><code>AutoLoad</code><p data-i18n="opt_load">เซิร์ฟรี เน็ตหลุด หรือ AutoRejoin ย้ายเซิร์ฟ สคริปต์จะรันตัวเองใหม่ให้อัตโนมัติ</p></div>
         </div>
-        <button class="z-btn z-full opt-copy" type="button" id="copyConfig"><i class="fa-solid fa-sliders"></i><span>คัดลอกแบบคอนฟิก</span></button>
+        <button class="z-btn z-full opt-copy" type="button" id="copyConfig"><i class="fa-solid fa-sliders"></i><span data-i18n="copy_config">คัดลอกแบบคอนฟิก</span></button>
       </div>
     </div>
     <div class="drawer-foot">
-      <button class="z-btn z-red z-lg z-full" type="button" id="copyButton"><i class="fa-regular fa-copy"></i><span>คัดลอกแบบธรรมดา</span></button>
+      <button class="z-btn z-red z-lg z-full" type="button" id="copyButton"><i class="fa-regular fa-copy"></i><span data-i18n="copy_plain">คัดลอกแบบธรรมดา</span></button>
     </div>
   </aside>
 
-  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="รูปประกาศ" tabindex="-1" hidden>
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="รูปประกาศ" data-i18n-aria="lightbox_aria" tabindex="-1" hidden>
     <img id="lightboxImg" alt="">
-    <button class="lightbox-close" type="button" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+    <button class="lightbox-close" type="button" aria-label="ปิด" data-i18n-aria="close"><i class="fa-solid fa-xmark"></i></button>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
