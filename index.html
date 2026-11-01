@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -90,22 +90,19 @@
       </section>
 
       <section class="status-board" id="status" aria-labelledby="statusTitle">
-        <div class="sb-hero" id="sbHero" data-level="loading">
-          <div class="radar" aria-hidden="true"><span class="ring"></span><span class="ring"></span><span class="ring"></span><span class="sweep"></span><i class="fa-solid fa-satellite-dish" id="sbIcon"></i></div>
-          <div class="sb-main">
-            <span class="sb-kicker"><span class="rec"></span>SYSTEM STATUS · LIVE</span>
-            <h2 id="statusTitle">กำลังสแกนระบบ...</h2>
-            <p id="sbSub">ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์</p>
-          </div>
-          <div class="sb-side">
-            <div class="sb-counts">
-              <div class="sbc ok"><b id="sbOk">-</b><span data-i18n="cnt_ok">พร้อมใช้</span></div>
-              <div class="sbc warn"><b id="sbWarn">-</b><span data-i18n="cnt_warn">อัปเดต</span></div>
-              <div class="sbc bad"><b id="sbBad">-</b><span data-i18n="cnt_bad">ล่ม</span></div>
+        <div class="sb" id="sbHero" data-level="loading">
+          <div class="sb-head">
+            <div class="sb-main">
+              <span class="sb-kicker"><span class="rec"></span>SYSTEM STATUS</span>
+              <h2 id="statusTitle">กำลังสแกนระบบ...</h2>
+              <p id="sbSub">ตรวจโหลดเดอร์และสคริปต์ทุกเกมแบบเรียลไทม์</p>
             </div>
-            <button class="z-btn" type="button" id="scanButton"><i class="fa-solid fa-satellite-dish"></i><span data-i18n="scan_now">สแกนเดี๋ยวนี้</span></button>
-            <small class="sb-timer" id="sbTimer">-</small>
+            <div class="sb-side">
+              <button class="z-btn" type="button" id="scanButton"><i class="fa-solid fa-arrows-rotate"></i><span data-i18n="scan_now">สแกนเดี๋ยวนี้</span></button>
+              <small class="sb-timer" id="sbTimer">-</small>
+            </div>
           </div>
+          <ul class="sb-list" id="sbList"></ul>
         </div>
       </section>
 
@@ -183,6 +180,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

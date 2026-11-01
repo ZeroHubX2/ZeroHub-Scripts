@@ -10,7 +10,7 @@ const NEWS_FRESH_MS = 3 * 24 * 3600 * 1000;
 const NEWS_TAGS = ["new", "update", "fix", "event"];
 const REFRESH_MS = 5 * 60 * 1000;
 const SCAN_MS = 60 * 1000;
-const SITE_UPDATED = "2026-11-01T07:16:00Z";
+const SITE_UPDATED = "2026-11-01T07:23:00Z";
 const FALLBACK_IMAGE = "img/zerohub.webp";
 const IMAGE_HOSTS = ["i.postimg.cc", "tr.rbxcdn.com", "raw.githubusercontent.com", "i.imgur.com", "cdn.discordapp.com"];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -34,9 +34,12 @@ const I18N = {
     banner_p: "ไม่ต้องจำหลายลิงก์ กดคัดลอกครั้งเดียว ระบบเช็กเกมที่คุณเล่นแล้วเปิดสคริปต์ที่ใช่ให้เอง",
     quick_copy: "คัดลอกโหลดเดอร์",
     view_all: "ดูทั้งหมด",
-    cnt_ok: "พร้อมใช้",
-    cnt_warn: "อัปเดต",
-    cnt_bad: "ล่ม",
+    lv_ok: "ปกติ",
+    lv_warn: "กำลังอัปเดต",
+    lv_bad: "ล่ม",
+    lv_loading: "รอสแกน",
+    loader: "โหลดเดอร์",
+    recent_scans: "ผลสแกน 20 รอบล่าสุด",
     scan_now: "สแกนเดี๋ยวนี้",
     arsenal: "คลังสคริปต์",
     close: "ปิด",
@@ -136,9 +139,12 @@ const I18N = {
     banner_p: "No more juggling links. Copy once, and it detects the game you're playing and runs the right script for you.",
     quick_copy: "Copy loader",
     view_all: "View all",
-    cnt_ok: "Online",
-    cnt_warn: "Updating",
-    cnt_bad: "Down",
+    lv_ok: "Online",
+    lv_warn: "Updating",
+    lv_bad: "Down",
+    lv_loading: "Pending",
+    loader: "Loader",
+    recent_scans: "Last 20 scans",
     scan_now: "Scan now",
     arsenal: "Script library",
     close: "Close",
@@ -258,8 +264,8 @@ const ui = {
   brand: $("brandHome"), backdrop: $("backdrop"), drawer: $("drawer"), dImage: $("drawerImage"),
   dTitle: $("drawerTitle"), dDesc: $("drawerDesc"), dMaps: $("drawerMaps"), code: $("codeBlock"),
   codeInfo: $("codeInfo"), dOpts: $("drawerOpts"), configBlock: $("configBlock"), copyConfig: $("copyConfig"), copy: $("copyButton"), close: $("closeDrawer"), toast: $("toast"),
-  sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbIcon: $("sbIcon"), sbOk: $("sbOk"),
-  sbWarn: $("sbWarn"), sbBad: $("sbBad"), sbTimer: $("sbTimer"), scan: $("scanButton"),
+  sbHero: $("sbHero"), sbTitle: $("statusTitle"), sbSub: $("sbSub"), sbList: $("sbList"),
+  sbTimer: $("sbTimer"), scan: $("scanButton"),
   sideStatus: $("sideStatus"), sideStatusText: $("sideStatusText"), dStatus: $("drawerStatus"),
   news: $("news"), newsList: $("newsList"), sideNews: $("sideNews"), sideNewsDot: $("sideNewsDot"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), langSwitch: $("langSwitch"),
@@ -466,22 +472,38 @@ function ago(ts) {
 
 const clock = (ts) => new Date(ts).toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
+const BARS = 20;
+
+function svcHTML(c) {
+  const ch = checks.get(c.key);
+  const hist = ch ? ch.hist.slice(-BARS) : [];
+  const slow = c.item ? 8000 : 6000;
+  const bars = Array.from({ length: BARS }, (_, i) => {
+    const h = hist[i - (BARS - hist.length)];
+    return `<i data-r="${h ? (!h.ok ? "bad" : h.ms > slow ? "warn" : "ok") : "none"}"></i>`;
+  }).join("");
+  const name = c.item ? c.item.name || t("untitled") : t("loader");
+  const img = c.item ? safeImage(c.item.image) : "img/logo-sm.webp";
+  const ms = ch && ch.last.ok ? `${fmt(ch.last.ms)} ms` : "--";
+  return `<li class="svc" data-level="${c.level}">
+    <img src="${esc(img)}" alt="">
+    <div class="svc-main">
+      <div class="svc-top"><b>${esc(name)}</b><span class="svc-lv">${esc(t(`lv_${c.level}`))}</span></div>
+      <div class="svc-bot"><span class="svc-bars" title="${esc(t("recent_scans"))}">${bars}</span><span class="svc-ms">${ms}</span></div>
+    </div>
+  </li>`;
+}
+
 function renderStatus() {
   if (!hasStatusUI) return;
   const comps = components();
   const lv = items.length ? overallLevel(comps) : "loading";
-  const info = LEVEL[lv];
   ui.sbHero.dataset.level = lv;
   ui.sideStatus.dataset.level = lv;
   ui.sbTitle.textContent = t(`${lv}_head`);
   ui.sbSub.textContent = t(`${lv}_sub`);
-  ui.sbIcon.className = `fa-solid ${info.icon}`;
   ui.sideStatusText.textContent = t(`${lv}_side`);
-  const games = comps.filter((c) => c.item);
-  const counted = games.length ? games : comps;
-  ui.sbOk.textContent = counted.filter((c) => c.level === "ok").length;
-  ui.sbWarn.textContent = counted.filter((c) => c.level === "warn").length;
-  ui.sbBad.textContent = counted.filter((c) => c.level === "bad").length;
+  if (ui.sbList) ui.sbList.innerHTML = items.length ? comps.map(svcHTML).join("") : "";
   renderScanTimer();
 }
 
