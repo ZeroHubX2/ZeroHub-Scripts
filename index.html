@@ -1,23 +1,36 @@
 <!doctype html>
-<html lang="th">
+<html lang="th" class="zh-locked">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZeroHub Scripts | สคริปต์ Roblox ฟรีจาก ZeroHub</title>
-  <meta name="description" content="ZeroHub Scripts รวมสคริปต์ Roblox ของ ZeroHub แจกฟรี กรองตามแมพ กดคัดลอกโหลดเดอร์ได้ในคลิกเดียว">
+  <title>Zero Hub | Access Restricted</title>
+  <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#ff1e1e">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="ZeroHub Scripts">
-  <meta property="og:title" content="ZeroHub Scripts | สคริปต์ Roblox ฟรีจาก ZeroHub">
-  <meta property="og:description" content="กรองตามแมพ กดคัดลอกโหลดเดอร์ได้ในคลิกเดียว แจกฟรีไม่มีค่าใช้จ่าย">
-  <meta property="og:url" content="https://zerohub-scripts.onrender.com/">
-  <meta property="og:image" content="https://zerohub-scripts.onrender.com/img/og.jpg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=18">
+  <style>
+    html.zh-locked body > *:not(#zhGate) { display: none !important; }
+    #zhGate { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px; overflow: auto;
+      font-family: Kanit, system-ui, sans-serif; color: #fff;
+      background: radial-gradient(ellipse 60% 45% at 50% 40%, rgba(200,15,45,.28), transparent 70%), #070707; }
+    #zhGate .box { width: 100%; max-width: 440px; text-align: center; padding: 36px 28px; border-radius: 20px; background: #121212;
+      border: 1px solid #2a2a2a; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    #zhGate img { display: block; margin: 0 auto; width: 96px; height: 96px; border-radius: 50%; box-shadow: 0 0 34px rgba(255,42,75,.35); }
+    #zhGate h1 { margin: 18px 0 2px; font-size: 30px; letter-spacing: 4px; } #zhGate h1 b { color: #ff2a4b; }
+    #zhGate .sub { color: #8f8f8f; font-size: 12px; letter-spacing: 4px; }
+    #zhGate .tag { display: inline-block; margin: 22px 0 12px; padding: 5px 14px; border-radius: 999px; font-size: 12px; letter-spacing: 2px;
+      color: #ff6b80; border: 1px solid rgba(255,42,75,.45); background: rgba(255,42,75,.08); }
+    #zhGate h2 { margin: 0 0 8px; font-size: 22px; } #zhGate p { margin: 0; color: #b5b5b5; font-size: 14.5px; line-height: 1.6; }
+    #zhGate a.go { display: inline-block; margin-top: 22px; padding: 11px 22px; border-radius: 12px; color: #fff; text-decoration: none;
+      background: linear-gradient(135deg,#ff2a4b,#a50d27); box-shadow: 0 6px 26px rgba(255,42,75,.35); }
+    #zhGate details { margin-top: 26px; padding-top: 16px; border-top: 1px solid #2a2a2a; color: #5f5f5f; font-size: 12px; }
+    #zhGate summary { cursor: pointer; letter-spacing: 2px; list-style: none; }
+    #zhGate form { display: flex; gap: 8px; margin-top: 12px; }
+    #zhGate input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #181818; color: #fff; }
+    #zhGate button { padding: 10px 16px; border-radius: 10px; border: 0; background: #2a2a2a; color: #fff; cursor: pointer; }
+    #zhGate .err { color: #ff6b80; margin-top: 8px; min-height: 1em; }
+  </style>
 </head>
 <body>
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -180,6 +193,54 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=18"></script>
+  <div id="zhGate">
+    <div class="box">
+      <img src="https://zerohub-shop.pages.dev/logo.webp" alt="Zero Hub">
+      <h1>ZERO <b>HUB</b></h1><div class="sub">SCRIPT PROTECTION SYSTEM</div>
+      <div class="tag">403 · ACCESS RESTRICTED</div>
+      <h2>หน้านี้ปิดให้บริการแล้ว</h2>
+      <p>สคริปต์ฟรีเดิมปิดทั้งหมดแล้ว ตอนนี้ Zero Hub ใช้ระบบคีย์<br>ซื้อคีย์และรับสคริปต์ได้ที่ร้าน Zero Hub</p>
+      <a class="go" href="https://zerohub-shop.pages.dev/howto">ไปที่ร้าน Zero Hub</a>
+      <details>
+        <summary>ADMIN</summary>
+        <form id="zhGateForm" autocomplete="off">
+          <input type="password" name="t" placeholder="รหัสแอดมิน">
+          <button type="submit">เข้า</button>
+        </form>
+        <div class="err"></div>
+      </details>
+    </div>
+  </div>
+  <script>
+    (async () => {
+      const H = "70fb711371198d4701f26e90119e57ecfc437081f2a1edcbbd8538e19a911eb5";
+      const hash = async (t) => {
+        const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+        return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+      };
+      const ok = async (t) => !!t && (await hash(t)) === H;
+      const open = () => {
+        document.documentElement.classList.remove("zh-locked");
+        document.getElementById("zhGate").remove();
+        document.title = "ZeroHub Scripts (Admin)";
+        const s = document.createElement("script");
+        s.src = "app.js?v=18";
+        document.body.appendChild(s);
+      };
+      let saved = "";
+      try { saved = localStorage.getItem("zh_admin") || ""; } catch {}
+      if (await ok(saved)) return open();
+      document.getElementById("zhGateForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const v = e.target.t.value.trim();
+        if (await ok(v)) {
+          try { localStorage.setItem("zh_admin", v); } catch {}
+          open();
+        } else {
+          document.querySelector("#zhGate .err").textContent = "รหัสไม่ถูกต้อง";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
