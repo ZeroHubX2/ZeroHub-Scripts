@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://jfqiqcyzcsfjolkctgay.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWlxY3l6Y3Nmam9sa2N0Z2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MzMxMDAsImV4cCI6MjEwODUwOTEwMH0.eka_J_CYoY3RilcVPPjuiTKWGSCGYdydD4AUJK2W6os";
+const SUPABASE_ANON_KEY = "sb_publishable_0eA1wI6hUmKM1B0Qwtu2fQ_iTZUdqHR";
 const DATA_URL = `${SUPABASE_URL}/rest/v1/scripts?select=*&order=sort_order.asc,id.asc`;
 const LOADER_URL = "https://zero-hub-api.onrender.com/api/script/ZeroHub";
 const CONFIG_LINE = 'getgenv().ZeroHub = { AutoRejoin = "Y", AutoLoad = "Y" }';
